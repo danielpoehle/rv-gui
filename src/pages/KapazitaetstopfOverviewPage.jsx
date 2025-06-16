@@ -79,6 +79,11 @@ function KapazitaetstopfOverviewPage() {
 
     return (
         <div>
+            <div>
+                <Link to="/" className="btn btn-secondary mb-4">
+                    <i className="bi bi-arrow-left me-2"></i>Zurück zur Startseite
+                </Link>
+            </div>
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <h1><i className="bi bi-box-seam me-3"></i>Kapazitätstöpfe</h1>  
                 <Link to="/kapazitaetstoepfe/summary">

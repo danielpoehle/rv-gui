@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Form, Button, Container, Row, Col, Card, Alert, Spinner } from 'react-bootstrap';
+import { Link } from 'react-router-dom';
 //import { useNavigate } from 'react-router-dom';
 
 function NewSlotPage() {
@@ -64,6 +65,11 @@ function NewSlotPage() {
 
     return (
         <Container fluid>
+            <div>
+                <Link to="/" className="btn btn-secondary mb-4">
+                    <i className="bi bi-arrow-left me-2"></i>Zurück zur Startseite
+                </Link>
+            </div>
             <h1 className="mb-4"><i className="bi bi-calendar-plus me-3"></i>Slots in Serie anlegen</h1>
             <Card className="p-4 shadow-sm">
                 <Form onSubmit={handleSubmit}>
@@ -110,7 +116,7 @@ function NewSlotPage() {
                 </Form>
                 {success && <Alert variant="success" className="mt-4">{success}</Alert>}
                 {error && <Alert variant="danger" className="mt-4">{error}</Alert>}
-            </Card>
+            </Card>            
         </Container>
     );
 }

@@ -16,6 +16,7 @@ import KapazitaetstopfDetailPage from './pages/KapazitaetstopfDetailPage';
 import AnfrageDetailPage from './pages/AnfrageDetailPage';
 import AnfrageSummaryPage from './pages/AnfrageSummaryPage';
 import KonfliktDetailPage from './pages/KonfliktDetailPage';
+import KonfliktGruppenOverviewPage from './pages/KonfliktGruppenOverviewPage';
 // Importiere hier die anderen Platzhalter-Seiten, wenn du sie erstellt hast
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
         <Route path="/anfragen/:anfrageId" element={<AnfrageDetailPage />} />
         <Route path="/anfragen/summary" element={<AnfrageSummaryPage />} /> 
         <Route path="/konflikte/:konfliktId" element={<KonfliktDetailPage />} />
+        <Route path="/gruppen" element={<KonfliktGruppenOverviewPage />} />
         {/* Hier kommen die Routen für die anderen Seiten hin */}
         {/* <Route path="/slots/neu" element={<NewSlotPage />} /> */}
         {/* <Route path="/anfragen" element={<AnfrageOverviewPage />} /> */}

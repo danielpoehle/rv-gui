@@ -116,6 +116,11 @@ function KonfliktCoordinationPage() {
 
     return (
         <Container>
+            <div>
+                <Link to="/" className="btn btn-secondary mb-4">
+                    <i className="bi bi-arrow-left me-2"></i>Zurück zur Startseite
+                </Link>
+            </div>
             <h1 className="mb-4"><i className="bi bi-tools me-3"></i>Konflikt-Koordination</h1>
             {actionFeedback && <Alert variant="info">{actionFeedback}</Alert>}
 
@@ -196,17 +201,14 @@ function KonfliktCoordinationPage() {
                                 <i className="bi bi-arrow-clockwise me-2"></i>
                                 Konflikte & Gruppen jetzt aktualisieren
                             </Button>
-                            <ListGroup>
-                                {konfliktGruppen.length > 0 ? konfliktGruppen.map(gruppe => (
-                                    <ListGroup.Item key={gruppe._id} as={Link} to={`/konflikte/gruppen/${gruppe._id}/bearbeiten`} action>
-                                        <div className="d-flex w-100 justify-content-between">
-                                            <h5 className="mb-1">Gruppe mit {gruppe.beteiligteAnfragen.length} Anfragen</h5>
-                                            <Badge bg="warning" pill>{gruppe.konflikteInGruppe.length} Konflikte</Badge>
-                                        </div>
-                                        <p className="mb-1">Status der Gruppe: <strong>{gruppe.status}</strong></p>
+                            <ListGroup variant="flush" className="mb-3">
+                                <ListGroup.Item variant={konfliktGruppen.length > 0 ? 'warning' : ''}>
+                                        Anzahl Konfliktgruppen: <strong>{konfliktGruppen.length}</strong>
                                     </ListGroup.Item>
-                                )) : <p>Aktuell keine offenen Konfliktgruppen für Töpfe.</p>}
                             </ListGroup>
+                            <Link to="/gruppen" className="btn btn-primary mb-4 w-100">
+                                <i className="bi bi-kanban me-2"></i>Konfliktgruppen ansehen
+                            </Link>
                         </Card.Body>
                     </Card>
                 </Col>

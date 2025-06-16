@@ -119,6 +119,11 @@ function KonfliktOverviewPage() {
 
     return (
         <div>
+            <div>
+                <Link to="/" className="btn btn-secondary mb-4">
+                    <i className="bi bi-arrow-left me-2"></i>Zurück zur Startseite
+                </Link>
+            </div>
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <h1><i className="bi bi-exclamation-triangle-fill me-3"></i>Konflikt-Übersicht</h1>
                 {/* Hier könnten später die Buttons zum Anstoßen der Erkennung hin */}

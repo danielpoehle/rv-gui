@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 //import axios from 'axios';
 import { Form, Button, Container, Row, Col, Card, Alert, Spinner, InputGroup } from 'react-bootstrap';
+import { Link } from 'react-router-dom';
 //import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 
@@ -98,6 +99,11 @@ function NewAnfragePage() {
 
     return (
         <Container>
+            <div>
+                <Link to="/" className="btn btn-secondary mb-4">
+                    <i className="bi bi-arrow-left me-2"></i>Zurück zur Startseite
+                </Link>
+            </div>
             <h1 className="mb-4"><i className="bi bi-file-earmark-plus me-3"></i>Neue Anfrage für RV stellen</h1>
             <Card className="p-4 shadow-sm">
                 <Form onSubmit={handleSubmit}>

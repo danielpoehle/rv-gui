@@ -51,19 +51,19 @@ function DashboardPage() {
                 />
                  <NavCard 
                     to="/anfragen" // Pfad für neue Seite
-                    iconClass="bi bi-luggage"
+                    iconClass="bi bi-list-columns-reverse"
                     title="Anfragen-Übersicht"
                     text="Alle eingegangenen Trassen-Anfragen und ihren Status einsehen."
                 />
                  <NavCard 
                     to="/anfragen/neu" // Pfad für neue Seite
-                    iconClass="bi bi-train-lightrail-front"
+                    iconClass="bi bi-envelope-arrow-down"
                     title="Neue Anfrage für RV stellen"
                     text="Eine neue Trassen-Anfrage mit gewünschten Slot-Abschnitten einreichen."
                 />
                  <NavCard 
                     to="/kapazitaetstoepfe" // Pfad für neue Seite
-                    iconClass="bi bi-box-seam"
+                    iconClass="bbi bi-beaker-fill"
                     title="Kapazitätstöpfe"
                     text="Alle Kapazitätstöpfe und ihre Auslastung anzeigen und verwalten."
                 />

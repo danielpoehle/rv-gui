@@ -119,6 +119,11 @@ function SlotOverviewPage() {
     // Rendere die Tabelle, wenn das Laden abgeschlossen und fehlerfrei ist
     return (
         <div>
+            <div>
+                <Link to="/" className="btn btn-secondary mb-4">
+                    <i className="bi bi-arrow-left me-2"></i>Zurück zur Startseite
+                </Link>
+            </div>
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <h1><i className="bi bi-calendar3-range me-3"></i>Slot-Übersicht</h1>
                 <div> {/* Wrapper für mehrere Buttons */}

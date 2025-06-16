@@ -43,7 +43,7 @@ const getKonfliktStatusBadgeVariant = (status) => {
 
 function KonfliktDetailPage() {
     const { konfliktId } = useParams();
-    const [konflikt, setKonflikt] = useState(null); 
+    const [konfliktData, setKonfliktData] = useState(null); 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -52,7 +52,7 @@ function KonfliktDetailPage() {
             setLoading(true);
             try {
                 const response = await apiClient.get(`/konflikte/${konfliktId}`);
-                setKonflikt(response.data.data);
+                setKonfliktData(response.data.data);
                 setError(null);
             } catch (err) {
                 setError("Konfliktdetails konnten nicht geladen werden.");
@@ -73,8 +73,9 @@ function KonfliktDetailPage() {
 
     if (loading) { return <div className="text-center mt-5"><Spinner animation="border" /></div>; }
     if (error) { return <Alert variant="danger">{error}</Alert>; }
-    if (!konflikt) { return <Alert variant="warning">Keine Konfliktdaten gefunden.</Alert>; }
+    if (!konfliktData) { return <Alert variant="warning">Keine Konfliktdaten gefunden.</Alert>; }
 
+    const { konflikt, gruppenId } = konfliktData;
     const slotsImKonfliktTopf = konflikt.ausloesenderKapazitaetstopf?.ListeDerSlots || [];
 
 
@@ -96,7 +97,8 @@ function KonfliktDetailPage() {
                             label={`Auslösender ${konflikt.konfliktTyp === 'KAPAZITAETSTOPF' ? 'Kapazitätstopf' : 'Slot'}`} 
                             value={<code>{konflikt.ausloesenderKapazitaetstopf?.TopfID || konflikt.ausloesenderSlot?.SlotID_Sprechend || 'N/A'}</code>}
                         />
-                        <DetailRow label="Anfragen vs. max. Kapazität" value={`${konflikt.beteiligteAnfragen.length} vs. ${konflikt.ausloesenderKapazitaetstopf.maxKapazitaet}`} />
+                        <DetailRow label="Anfragen vs. maximale Kapazität" value={`${konflikt.beteiligteAnfragen.length} vs. ${konflikt.ausloesenderKapazitaetstopf.maxKapazitaet}`} />
+                        <DetailRow label="Konflikt-Gruppe" value={<code>{gruppenId}</code>} />
                      </ListGroup>
                 </Card.Body>
             </Card>
