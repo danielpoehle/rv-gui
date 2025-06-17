@@ -33,7 +33,7 @@ function DashboardPage() {
         <Container>
             <div className="text-center mb-5">
                 <h1 className="display-5">Slot- & Konfliktmanagement für Rahmenverträge</h1>
-                <p className="lead">Willkommen! Bitte wähle einen Bereich zur Bearbeitung aus.</p>
+                <p className="lead">Willkommen! Bitte wählen Sie einen Bereich zur Bearbeitung aus.</p>
             </div>
             
             <Row>
@@ -75,7 +75,7 @@ function DashboardPage() {
                 />
                 <NavCard 
                     to="/konflikte" // Pfad für neue Seite
-                    iconClass="bi bi-exclamation-triangle-fill"
+                    iconClass="bi bi-exclamation-octagon-fill"
                     title="Konflikt-Übersicht"
                     text="Eine Liste aller offenen und bearbeiteten einzelnen Kapazitätskonflikte anzeigen."
                 />
@@ -84,6 +84,12 @@ function DashboardPage() {
                     iconClass="bi bi-tools"
                     title="Konflikte bearbeiten"
                     text="Offene Konfliktgruppen für die Koordination und Lösung aufrufen."
+                />
+                 <NavCard 
+                    to="/doku" // Pfad für neue Seite
+                    iconClass="bi bi-file-earmark-pdf-fill"
+                    title="Konfliktdokumentation erstellen"
+                    text="Dokumentation nach der Konfliktlösung für die BNetzA erstellen und ablegen."
                 />
             </Row>
         </Container>

@@ -98,7 +98,15 @@ function KonfliktDetailPage() {
                             value={<code>{konflikt.ausloesenderKapazitaetstopf?.TopfID || konflikt.ausloesenderSlot?.SlotID_Sprechend || 'N/A'}</code>}
                         />
                         <DetailRow label="Anfragen vs. maximale Kapazität" value={`${konflikt.beteiligteAnfragen.length} vs. ${konflikt.ausloesenderKapazitaetstopf.maxKapazitaet}`} />
-                        <DetailRow label="Konflikt-Gruppe" value={<code>{gruppenId}</code>} />
+                        <DetailRow label="Konflikt-Gruppe" value={
+                            gruppenId ? (
+                                    <Link to={`/konflikte/gruppen/${gruppenId}/bearbeiten`}>
+                                        <code>{gruppenId}</code>
+                                    </Link>
+                                ) : (
+                                    '-'
+                                )
+                        } />
                      </ListGroup>
                 </Card.Body>
             </Card>
