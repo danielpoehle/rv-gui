@@ -33,6 +33,10 @@ function KonfliktGruppenCoordinationPage() {
     const [error, setError] = useState(null);
     const [actionInProgress, setActionInProgress] = useState(false);
     const [actionFeedback, setActionFeedback] = useState('');
+    
+    // State für die eingegebenen Höchstpreis-Gebote
+    // Wir speichern sie in einem Objekt mit der anfrageId als Schlüssel
+    const [gebote, setGebote] = useState({});
 
     // State für die Analyse-Ergebnisse
     //const [verschiebeAnalyse, setVerschiebeAnalyse] = useState(null);
@@ -89,6 +93,7 @@ function KonfliktGruppenCoordinationPage() {
         }
     };
     
+    // Handler-Funktion für die Verarbeitung des Verzichts
     const handleVerzichtSubmit = async () => {
         setActionInProgress(true);
         setActionFeedback('Verarbeite Verzichte...');
@@ -107,6 +112,56 @@ function KonfliktGruppenCoordinationPage() {
             await fetchData(); // Lade die Daten neu, um den aktualisierten Status zu sehen
         } catch(err) {
             const errorMsg = err.response?.data?.message || 'Fehler beim Verarbeiten der Verzichte.';
+            setActionFeedback(errorMsg);
+            console.error(err);
+        } finally {
+            setActionInProgress(false);
+        }
+    };
+
+    // Handler-Funktion für den Entgeltvergleich
+    const handleEntgeltvergleichSubmit = async () => {
+        setActionInProgress(true);
+        setActionFeedback('Führe Entgeltvergleich durch...');
+        try {
+            const response = await apiClient.put(`/konflikte/gruppen/${gruppenId}/entgeltvergleich`, {}); // Leerer Body genügt
+            setActionFeedback(response.data.message);
+            fetchData(); // Lade die Daten neu, um den aktualisierten Status und die Reihung zu sehen
+        } catch(err) {
+            const errorMsg = err.response?.data?.message || 'Fehler beim Durchführen des Entgeltvergleichs.';
+            setActionFeedback(errorMsg);
+            console.error(err);
+        } finally {
+            setActionInProgress(false);
+        }
+    };
+
+    // Handler für Änderungen in den Gebot-Eingabefeldern
+    const handleGebotChange = (anfrageId, gebotValue) => {
+        setGebote(prevGebote => ({
+            ...prevGebote,
+            [anfrageId]: gebotValue
+        }));
+    };
+
+    // Handler zum Abschicken der Höchstpreis-Ergebnisse
+    const handleHoechstpreisSubmit = async () => {
+        setActionInProgress(true);
+        setActionFeedback('Verarbeite Höchstpreis-Gebote...');
+        try {
+            // Erstelle den Payload aus dem `gebote`-State
+            const payload = {
+                ListeGeboteHoechstpreis: Object.entries(gebote).map(([anfrageId, gebot]) => ({
+                    anfrage: anfrageId,
+                    gebot: parseFloat(gebot) || 0 // Konvertiere zu Zahl, Fallback auf 0
+                }))
+            };
+
+            const response = await apiClient.put(`/api/konflikte/gruppen/${gruppenId}/hoechstpreis-ergebnis`, payload);
+            setActionFeedback(response.data.message);
+            fetchData(); // Lade die Daten neu, um den finalen Status zu sehen
+        } catch(err) {
+            const errorMsg = err.response?.data?.message || 'Fehler beim Verarbeiten der Höchstpreis-Gebote.';
             setActionFeedback(errorMsg);
             console.error(err);
         } finally {
@@ -133,10 +188,37 @@ function KonfliktGruppenCoordinationPage() {
         };
     }, [gruppe]);
 
+    // useMemo-Hook zum Filtern der Höchstpreis-Kandidaten
+    const hoechstpreisKandidaten = useMemo(() => {
+        if (!gruppe) return [];
+
+        // 1. Sammle die IDs aller Töpfe, die zu dieser Konfliktgruppe gehören
+        const topfIdsInGruppe = new Set(
+            gruppe.konflikteInGruppe.map(k => k.ausloesenderKapazitaetstopf?._id.toString())
+        );
+
+        // 2. Filtere die beteiligten Anfragen
+        return gruppe.beteiligteAnfragen.filter(anfrage => {
+            // Eine Anfrage ist ein Kandidat, wenn sie mindestens eine Slot-Zuweisung hat, die:
+            // a) zu einem der Töpfe in dieser Gruppe gehört UND
+            // b) den Status 'wartet_hoechstpreis_topf' hat.
+            return anfrage.ZugewieseneSlots.some(zuweisung => {
+                const hatWartestatus = zuweisung.statusEinzelzuweisung === 'wartet_hoechstpreis_topf';
+                const gehoertZuGruppe = zuweisung.slot && zuweisung.slot.VerweisAufTopf && topfIdsInGruppe.has(zuweisung.slot.VerweisAufTopf.toString());
+                
+                return hatWartestatus && gehoertZuGruppe;
+            });
+        });
+    }, [gruppe]); // Wird nur neu berechnet, wenn sich das `gruppe`-Objekt ändert
+
+
 
     if (loading) return <div className="text-center mt-5"><Spinner animation="border" /></div>;
     if (error) return <Alert variant="danger">{error}</Alert>;
     if (!gruppe) return <Alert variant="warning">Keine Gruppendaten gefunden.</Alert>;
+
+    // Repräsentatives Konfliktdokument für die Anzeige der Reihung
+    const repraesentativerKonflikt = gruppe.konflikteInGruppe[0];
 
     return (
         <Container>
@@ -177,7 +259,11 @@ function KonfliktGruppenCoordinationPage() {
             </Card>
 
             {/* --- AKKORDION FÜR DIE LÖSUNGSPHASEN --- */}
-            <Accordion defaultActiveKey={['offen', 'in_bearbeitung_verzicht'].includes(gruppe.status) ? '0' : '1'}>
+            <Accordion defaultActiveKey={
+                ['offen', 'in_bearbeitung_verzicht'].includes(gruppe.status) ? '0' :
+                gruppe.status === 'in_bearbeitung_entgelt' ? '1' :
+                gruppe.status === 'in_bearbeitung_hoechstpreis' ? '2' : '0'
+            }>
                 {/* --- PHASE 1: VERZICHT & KOORDINATION --- */}
                 <Accordion.Item eventKey="0">
                     <Accordion.Header>Phase 1: Verzicht & Koordination</Accordion.Header>
@@ -216,24 +302,124 @@ function KonfliktGruppenCoordinationPage() {
                  <Accordion.Item eventKey="1">
                     <Accordion.Header>Phase 2: Entgeltvergleich</Accordion.Header>
                     <Accordion.Body>
-                        <p>Dieser Bereich wird aktiv, wenn nach der Verzicht-Phase weiterhin ein Konflikt besteht.</p>
-                        <Button disabled={gruppe.status !== 'in_bearbeitung_entgelt' || actionInProgress}>
-                            Entgeltvergleich jetzt durchführen
-                        </Button>
+                        <p>
+                            Dieser Bereich wird aktiv, wenn nach der Verzicht-Phase weiterhin ein Konflikt besteht. 
+                            Das System ermittelt automatisch eine Reihung basierend auf den Entgelten der verbleibenden Anfragen.
+                        </p>
+                        <div className="d-grid">
+                            <Button 
+                                onClick={handleEntgeltvergleichSubmit}
+                                disabled={gruppe.status !== 'in_bearbeitung_entgelt' || actionInProgress}
+                                variant="primary"
+                            >
+                                {actionInProgress ? <Spinner size="sm" /> : 'Entgeltvergleich jetzt durchführen'}
+                            </Button>
+                        </div>
+
+                        {/* ANZEIGE DER ERGEBNIS-TABELLE */}
+                        {repraesentativerKonflikt && repraesentativerKonflikt.ReihungEntgelt && repraesentativerKonflikt.ReihungEntgelt.length > 0 && (
+                            <div className="mt-4">
+                                <h5>Ergebnis der Reihung:</h5>
+                                <Table striped bordered size="sm">
+                                    <thead className="table-light">
+                                        <tr>
+                                            <th>Rang</th>
+                                            <th>Anfrage ID</th>
+                                            <th>EVU</th>
+                                            <th>Entgelt (€)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {repraesentativerKonflikt.ReihungEntgelt.map(item => (
+                                            <tr key={item.rang}>
+                                                <td><h4><Badge bg="dark">{item.rang}</Badge></h4></td>
+                                                <td><code>{item.anfrage.AnfrageID_Sprechend}</code></td>
+                                                <td>{item.anfrage.EVU}</td>
+                                                <td className="text-end">{item.entgelt.toFixed(2)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </Table>
+                            </div>
+                        )}
                     </Accordion.Body>
                 </Accordion.Item>
 
                 {/* --- PHASE 3: HÖCHSTPREISVERFAHREN --- */}
-                 <Accordion.Item eventKey="2">
+                <Accordion.Item eventKey="2">
                     <Accordion.Header>Phase 3: Höchstpreisverfahren</Accordion.Header>
                     <Accordion.Body>
-                        <p>Dieser Bereich wird aktiv, wenn ein Gleichstand beim Entgeltvergleich aufgetreten ist.</p>
-                        <Button disabled={gruppe.status !== 'in_bearbeitung_hoechstpreis' || actionInProgress}>
-                            Höchstpreis-Gebote einreichen
-                        </Button>
+                        <p>
+                            Dieser Bereich wird aktiv, wenn ein Gleichstand beim Entgeltvergleich aufgetreten ist.
+                            Bitte tragen Sie die neuen Gebote für die folgenden Anfragen ein.
+                        </p>
+                        
+                        {gruppe.status === 'in_bearbeitung_hoechstpreis' ? (
+                            <Form onSubmit={(e) => { e.preventDefault(); handleHoechstpreisSubmit(); }}>
+                                <Table bordered size="sm" className="mt-3">
+                                    <thead>
+                                        <tr>
+                                            <th>Anfrage ID</th>
+                                            <th>EVU</th>
+                                            <th>Urspr. Entgelt (€)</th>
+                                            <th style={{width: '200px'}}>Neues Gebot (€)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {hoechstpreisKandidaten.map(kandidat => {
+                                            const aktuellesGebot = gebote[kandidat._id] || '';
+                                            const istGebotUngueltig = aktuellesGebot !== '' && parseFloat(aktuellesGebot) <= (kandidat.Entgelt || 0);
+
+                                            return (
+                                                <tr key={kandidat._id}>
+                                                    <td><code>{kandidat.AnfrageID_Sprechend}</code></td>
+                                                    <td>{kandidat.EVU}</td>
+                                                    <td>{(kandidat.Entgelt || 0).toFixed(2)}</td>
+                                                    <td>
+                                                        <Form.Control 
+                                                            type="number"
+                                                            value={aktuellesGebot}
+                                                            onChange={(e) => handleGebotChange(kandidat._id, e.target.value)}
+                                                            placeholder="Gebot eingeben"
+                                                            isInvalid={istGebotUngueltig} // Visuelles Feedback
+                                                            min="0"
+                                                            step="0.01"
+                                                        />
+                                                        <Form.Control.Feedback type="invalid">
+                                                            Gebot sollte höher als ursprüngliches Entgelt sein. Bitte genau prüfen.
+                                                        </Form.Control.Feedback>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </Table>
+                                <div className="d-grid mt-3">
+                                    <Button type="submit" variant="primary" disabled={actionInProgress}>
+                                        {actionInProgress ? <Spinner size="sm"/> : 'Höchstpreis-Gebote verarbeiten & Konflikt lösen'}
+                                    </Button>
+                                </div>
+                            </Form>
+                        ) : (
+                            <Alert variant="secondary">Der Konflikt befindet sich nicht im Höchstpreisverfahren.</Alert>
+                        )}
                     </Accordion.Body>
                 </Accordion.Item>
             </Accordion>
+
+            <h4 className="mt-4">Zugeordnete Kapazitätstöpfe </h4>
+            <ListGroup>
+                {gruppe.konflikteInGruppe.map(k => (
+                    <ListGroup.Item 
+                        key={k.ausloesenderKapazitaetstopf._id} 
+                        className="d-flex justify-content-between align-items-center"
+                        >
+                        <code>{k.ausloesenderKapazitaetstopf.TopfID}</code>
+                                    
+                        Max. Kapazität {k.ausloesenderKapazitaetstopf.maxKapazitaet}
+                    </ListGroup.Item>
+                ))}
+            </ListGroup>
             
             {/* Modal zur Anzeige der Analyse-Ergebnisse */}
             <Modal show={showAnalyseModal} onHide={() => setShowAnalyseModal(false)} size="lg">

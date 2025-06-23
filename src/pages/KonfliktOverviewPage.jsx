@@ -35,7 +35,7 @@ function KonfliktOverviewPage() {
             setLoading(true);
             try {
                 // Lade initial nur die offenen Konflikte für eine bessere Übersicht
-                const response = await apiClient.get(`/konflikte?page=${currentPage}&limit=${limitPerPage}&status=offen`);
+                const response = await apiClient.get(`/konflikte?page=${currentPage}&limit=${limitPerPage}`);
                 setKonflikte(response.data.data);
                 setTotalPages(response.data.totalPages);
                 setError(null);
