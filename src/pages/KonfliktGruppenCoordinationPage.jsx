@@ -47,6 +47,9 @@ function KonfliktGruppenCoordinationPage() {
     // State für die Checkboxen der Verzicht-Phase
     const [verzichte, setVerzichte] = useState(new Set());
 
+    // State für die vom Nutzer eingegebenen EVU-Reihungen
+    const [evuReihungen, setEvuReihungen] = useState({});
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
@@ -64,6 +67,51 @@ function KonfliktGruppenCoordinationPage() {
     useEffect(() => {
         fetchData(); 
     }, [fetchData]);
+
+    // useMemo, um zu bestimmen, welche EVUs eine Reihung benötigen
+    const evusDieReihungBenötigen = useMemo(() => {
+        if (!gruppe || !gruppe.konflikteInGruppe?.[0]?.ausloesenderKapazitaetstopf) return [];
+        
+        // Annahme: Alle Töpfe in einer Gruppe haben dieselbe Anzahl an Slots und somit dasselbe Limit
+        // das wird über die korrekte Gruppen-ID sichergestellt, die gleiche Töpfe zusammen bündelt
+        const anzahlSlotsImTopf = gruppe.konflikteInGruppe[0].ausloesenderKapazitaetstopf.ListeDerSlots.length;
+        const evuMarktanteilLimit = Math.floor(0.56 * anzahlSlotsImTopf);
+
+        const anfragenProEVU = new Map();
+        gruppe.beteiligteAnfragen.forEach(a => {
+            if (!anfragenProEVU.has(a.EVU)) anfragenProEVU.set(a.EVU, []);
+            anfragenProEVU.get(a.EVU).push(a);
+        });
+
+        const benoetigenReihung = [];
+        anfragenProEVU.forEach((anfragen, evu) => {
+            if (anfragen.length > evuMarktanteilLimit) {
+                benoetigenReihung.push({ evu, anfragen, limit: evuMarktanteilLimit });
+            }
+        });
+        return benoetigenReihung;
+    }, [gruppe]);
+
+    // Initialisiere den Reihungs-State, wenn die Kandidaten feststehen
+    useEffect(() => {
+        const initialReihungen = {};
+        for (const gruppe of evusDieReihungBenötigen) {
+            initialReihungen[gruppe.evu] = gruppe.anfragen.map(a => a._id);
+        }
+        setEvuReihungen(initialReihungen);
+    }, [evusDieReihungBenötigen]);
+
+    // NEU: Handler, um Anfragen in der Reihung nach oben/unten zu verschieben
+    const handleMoveAnfrage = (evu, index, direction) => {
+        const anfrageIds = [...evuReihungen[evu]];
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= anfrageIds.length) return; // Nicht über die Grenzen hinaus verschieben
+
+        // Elemente tauschen
+        [anfrageIds[index], anfrageIds[newIndex]] = [anfrageIds[newIndex], anfrageIds[index]];
+        
+        setEvuReihungen(prev => ({ ...prev, [evu]: anfrageIds }));
+    };
 
     
 
@@ -124,7 +172,14 @@ function KonfliktGruppenCoordinationPage() {
         setActionInProgress(true);
         setActionFeedback('Führe Entgeltvergleich durch...');
         try {
-            const response = await apiClient.put(`/konflikte/gruppen/${gruppenId}/entgeltvergleich`, {}); // Leerer Body genügt
+            // Erstelle den Payload mit den vom Nutzer geordneten Reihungen
+            const payload = {
+                evuReihungen: Object.entries(evuReihungen).map(([evu, anfrageIds]) => ({
+                    evu,
+                    anfrageIds
+                }))
+            };
+            const response = await apiClient.put(`/konflikte/gruppen/${gruppenId}/entgeltvergleich`, payload); // Leerer Body genügt
             setActionFeedback(response.data.message);
             fetchData(); // Lade die Daten neu, um den aktualisierten Status und die Reihung zu sehen
         } catch(err) {
@@ -157,7 +212,7 @@ function KonfliktGruppenCoordinationPage() {
                 }))
             };
 
-            const response = await apiClient.put(`/api/konflikte/gruppen/${gruppenId}/hoechstpreis-ergebnis`, payload);
+            const response = await apiClient.put(`/konflikte/gruppen/${gruppenId}/hoechstpreis-ergebnis`, payload);
             setActionFeedback(response.data.message);
             fetchData(); // Lade die Daten neu, um den finalen Status zu sehen
         } catch(err) {
@@ -305,7 +360,47 @@ function KonfliktGruppenCoordinationPage() {
                         <p>
                             Dieser Bereich wird aktiv, wenn nach der Verzicht-Phase weiterhin ein Konflikt besteht. 
                             Das System ermittelt automatisch eine Reihung basierend auf den Entgelten der verbleibenden Anfragen.
+                            Wenn ein EVU mehr Anfragen im Konflikt hat als sein Marktanteil-Limit erlaubt,
+                            legen Sie bitte nach dessen Rückmeldung die Priorisierung durch Sortieren fest.
                         </p>
+                        {evusDieReihungBenötigen.length > 0 && (
+                            <Card className="my-3">
+                                <Card.Header className="bg-warning text-dark">Manuelle EVU-Reihung erforderlich</Card.Header>
+                                <ListGroup variant="flush">
+                                {evusDieReihungBenötigen.map(({ evu, limit }) => (
+                                    <ListGroup.Item key={evu}>
+                                        <strong>{evu}</strong> (Limit: {limit})
+                                        <Table hover size="sm" className="mt-2">
+                                            <tbody>
+                                            {(evuReihungen[evu] || []).map((anfrageId, index) => {
+                                                const anfrage = gruppe.beteiligteAnfragen.find(a => a._id === anfrageId);
+                                                if (!anfrage) return null;
+                                                // Zeilen über dem Limit werden visuell markiert
+                                                const isOverLimit = index >= limit;
+                                                return (
+                                                    <tr key={anfrage._id} className={isOverLimit ? 'table-danger' : ''}>
+                                                        <td>#{index + 1}</td>
+                                                        <td><code>{anfrage.AnfrageID_Sprechend}</code></td>
+                                                        <td>{(anfrage.Entgelt || 0).toFixed(2)} €</td>
+                                                        <td className="text-end">
+                                                            <Button variant="light" size="sm" onClick={() => handleMoveAnfrage(evu, index, 'up')} disabled={gruppe.status !== 'in_bearbeitung_entgelt' || index === 0}>
+                                                                <i className="bi bi-arrow-up"></i>
+                                                            </Button>
+                                                            <Button variant="light" size="sm" onClick={() => handleMoveAnfrage(evu, index, 'down')} disabled={gruppe.status !== 'in_bearbeitung_entgelt' || index === evuReihungen[evu].length - 1} className="ms-1">
+                                                                <i className="bi bi-arrow-down"></i>
+                                                            </Button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                            </tbody>
+                                        </Table>
+                                    </ListGroup.Item>
+                                ))}
+                                </ListGroup>
+                            </Card>
+                        )}
+
                         <div className="d-grid">
                             <Button 
                                 onClick={handleEntgeltvergleichSubmit}

@@ -154,9 +154,9 @@ function KonfliktCoordinationPage() {
                                 to="/anfragen/" // Der Zielpfad
                                 variant="secondary"
                                 className="w-100"
-                                disabled={anfragenInPipeline.ungueltig === 0}                            >
-                                <i class="bi bi-question-octagon-fill me-3"></i>
-                                Anfragen plausibilisieren
+                                disabled={anfragenInPipeline.ungueltig === 0}>
+                                    <i class="bi bi-question-octagon-fill me-3"></i>
+                                    Anfragen plausibilisieren
                             </Button>
                             <Button 
                                 onClick={handleZuordnungStarten} 
@@ -188,6 +188,9 @@ function KonfliktCoordinationPage() {
                                     </ListGroup.Item>
                                     <ListGroup.Item variant={anfragenInPipeline.inPruefungSlot > 0 ? 'success' : ''}>
                                         Anfragen mit Status 'in Prüfung Slot': <>{anfragenInPipeline.inPruefungSlot}</>
+                                    </ListGroup.Item>
+                                    <ListGroup.Item variant={anfragenInPipeline.abgelehnt > 0 ? 'info' : ''}>
+                                        Anfragen mit Status 'abgelehnt': <>{anfragenInPipeline.abgelehnt}</>
                                     </ListGroup.Item>
                                 
                                 {/* Hier könnten weitere Status-Zählungen hin */}
