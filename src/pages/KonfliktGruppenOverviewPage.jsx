@@ -90,10 +90,11 @@ function KonfliktGruppenOverviewPage() {
             <Table striped bordered hover responsive size="sm" className="shadow-sm">
                 <thead className="table-dark">
                     <tr>
+                        <th>Typ</th>
                         <th>ID</th>
                         <th>Verkehrsart</th>                        
                         <th>Anzahl Anfragen im Konflikt</th>                        
-                        <th>Anzahl Töpfe</th>
+                        <th>Anzahl Konflikte (Töpfe oder Slots)</th>
                         <th>Status der Gruppe</th>                        
                         <th>Aktionen</th>
                     </tr>
@@ -102,11 +103,24 @@ function KonfliktGruppenOverviewPage() {
                     {gruppen.length === 0 ? (
                          <tr><td colSpan="6" className="text-center p-4">Keine aktiven Konfliktgruppen gefunden.</td></tr>
                     ) : (
-                        gruppen.map(gruppe => (
-                            <tr key={gruppe.gruppenSchluessel}>
-                                <td><code>{gruppe._id}</code></td>
+                        gruppen.map(gruppe => {
+                        // Ermittle die Details des ersten Konflikts in der Gruppe als Repräsentant
+                        const repraesentativerKonflikt = gruppe.konflikteInGruppe?.[0];
+                        const konfliktTyp = repraesentativerKonflikt?.konfliktTyp;                        
+                        
+
+                        return (
+                            <tr key={gruppe._id}>
+                                <td>
+                                    <Badge bg={konfliktTyp === 'KAPAZITAETSTOPF' ? 'secondary' : 'primary'}>
+                                        {konfliktTyp}
+                                    </Badge>
+                                </td>
+                                <td>
+                                    <code>{gruppe._id || 'NA'}</code>
+                                </td>
                                 <td><Badge bg={verkehrsartColorMap[getGruppeVerkehrsart(gruppe)] || 'secondary'}>{getGruppeVerkehrsart(gruppe)}</Badge></td>
-                                <td>{gruppe.beteiligteAnfragen.length}</td>                                
+                                <td>{gruppe.beteiligteAnfragen.length}</td>
                                 <td>{gruppe.konflikteInGruppe.length}</td>
                                 <td>
                                     <Badge bg={getGruppeStatusBadgeVariant(gruppe.status)} pill>
@@ -114,7 +128,7 @@ function KonfliktGruppenOverviewPage() {
                                     </Badge>
                                 </td>
                                 <td>
-                                    <Link to={`/konflikte/gruppen/${gruppe._id}/bearbeiten`} className="me-2">
+                                    <Link to={`/konflikte/gruppen/${gruppe._id}/bearbeiten`}>
                                         <Button variant="primary" size="sm" title="Gruppe bearbeiten">
                                             <i className="bi bi-tools"></i>
                                         </Button>
@@ -124,13 +138,16 @@ function KonfliktGruppenOverviewPage() {
                                         size="sm" 
                                         title="Konfliktgruppe zurücksetzen"
                                         onClick={() => handleResetGruppe(gruppe._id)}
+                                        className="ms-2"
                                     >
                                         <i className="bi bi-arrow-counterclockwise"></i>
                                     </Button>
                                 </td>
                             </tr>
-                        ))
-                    )}
+                        );
+                    })
+                    )                    
+                    }                    
                 </tbody>
             </Table>
         </div>

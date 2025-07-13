@@ -11,7 +11,6 @@ function KonfliktCoordinationPage() {
     const [error, setError] = useState(null);
     const [actionInProgress, setActionInProgress] = useState(false);
     const [actionFeedback, setActionFeedback] = useState('');
-    const [slotConflicts, setSlotConflicts] = useState(false);
 
     const fetchData = async () => {
         setLoading(true);
@@ -39,7 +38,6 @@ function KonfliktCoordinationPage() {
 
     const handleZuordnungStarten = async () => {
         setActionInProgress(true);
-        setSlotConflicts(false);
         setActionFeedback('Starte Zuweisung für alle validierten Anfragen...');
         try {
             const response = await apiClient.post('/anfragen/zuordnen/alle-validierten');
@@ -55,14 +53,29 @@ function KonfliktCoordinationPage() {
 
     const handleKonfliktIdentifizierungStarten = async () => {
         setActionInProgress(true);
-        setActionFeedback('Starte Konflikterkennung und Gruppensynchronisation...');
+        setActionFeedback('Starte Topf-Konflikterkennung und Gruppensynchronisation...');
         try {
             const response = await apiClient.post('/konflikte/identifiziere-topf-konflikte');
             setActionFeedback(`Prozess abgeschlossen: ${response.data.neuErstellteKonflikte.length} neue Konflikte, ${response.data.aktualisierteUndGeoeffneteKonflikte.length} aktualisierte Konflikte.`);
             fetchData(); // Lade die Daten neu
         } catch (err) {
-            console.error("Fehler bei Konflikterkennung und Gruppensynchronisation:", err);
-            setActionFeedback('Ein Fehler ist bei der Konflikterkennung aufgetreten.');
+            console.error("Fehler bei Topf-Konflikterkennung und Gruppensynchronisation:", err);
+            setActionFeedback('Ein Fehler ist bei der Topf-Konflikterkennung aufgetreten.');
+        } finally {
+            setActionInProgress(false);
+        }
+    };
+
+    const handleSlotKonfliktIdentifizierungStarten = async () => {
+        setActionInProgress(true);
+        setActionFeedback('Starte Slot-Konflikterkennung und Gruppensynchronisation...');
+        try {
+            const response = await apiClient.post('/konflikte/identifiziere-slot-konflikte');
+            setActionFeedback(`Prozess abgeschlossen: ${response.data.neuErstellteKonflikte.length} neue Konflikte, ${response.data.aktualisierteUndGeoeffneteKonflikte.length} aktualisierte Konflikte.`);
+            fetchData(); // Lade die Daten neu
+        } catch (err) {
+            console.error("Fehler bei Slot-Konflikterkennung und Gruppensynchronisation:", err);
+            setActionFeedback('Ein Fehler ist bei der Slot-Konflikterkennung aufgetreten.');
         } finally {
             setActionInProgress(false);
         }
@@ -74,8 +87,9 @@ function KonfliktCoordinationPage() {
         acc.validiert += curr.statusCounts.validiert || 0;   
         acc.ungueltig += curr.statusCounts.ungueltig || 0;     
         acc.inPruefungTopf += curr.statusCounts.inPruefungTopf || 0;     
-        acc.inKonflikt += curr.statusCounts.inKonflikt || 0;
+        acc.inKonfliktTopf += curr.statusCounts.inKonfliktTopf || 0;
         acc.inPruefungSlot += curr.statusCounts.inPruefungSlot || 0;
+        acc.inKonfliktSlot += curr.statusCounts.inKonfliktSlot || 0;
         acc.bestaetigt += curr.statusCounts.bestaetigt || 0;
         acc.abgelehnt += curr.statusCounts.abgelehnt || 0;
         acc.intzw += curr.statusCounts.teilzuweisung || 0;
@@ -89,8 +103,9 @@ function KonfliktCoordinationPage() {
         validiert: 0,  
         ungueltig: 0,  
         inPruefungTopf: 0,     
-        inKonflikt: 0,
+        inKonfliktTopf: 0,
         inPruefungSlot: 0,
+        inKonfliktSlot: 0,
         bestaetigt: 0,
         abgelehnt: 0,
         intzw: 0,
@@ -101,8 +116,9 @@ function KonfliktCoordinationPage() {
         validiert: 0,  
         ungueltig: 0,  
         inPruefungTopf: 0,     
-        inKonflikt: 0,
+        inKonfliktTopf: 0,
         inPruefungSlot: 0,
+        inKonfliktSlot: 0,
         bestaetigt: 0,
         abgelehnt: 0,
         intzw: 0,
@@ -183,8 +199,8 @@ function KonfliktCoordinationPage() {
                                     <ListGroup.Item variant={anfragenInPipeline.inPruefungTopf > 0 ? 'warning' : ''}>
                                         Anfragen mit Status 'in Prüfung Topf': <strong>{anfragenInPipeline.inPruefungTopf}</strong>
                                     </ListGroup.Item>
-                                    <ListGroup.Item variant={anfragenInPipeline.inKonflikt > 0 ? 'danger' : ''}>
-                                        Anfragen mit Status 'in Konflikt': <strong>{anfragenInPipeline.inKonflikt}</strong>
+                                    <ListGroup.Item variant={anfragenInPipeline.inKonfliktTopf > 0 ? 'danger' : ''}>
+                                        Anfragen mit Status 'in Konflikt': <strong>{anfragenInPipeline.inKonfliktTopf}</strong>
                                     </ListGroup.Item>
                                     <ListGroup.Item variant={anfragenInPipeline.inPruefungSlot > 0 ? 'success' : ''}>
                                         Anfragen mit Status 'in Prüfung Slot': <>{anfragenInPipeline.inPruefungSlot}</>
@@ -202,7 +218,7 @@ function KonfliktCoordinationPage() {
                                 className="w-100 mb-3"
                             >
                                 <i className="bi bi-arrow-clockwise me-2"></i>
-                                Konflikte & Gruppen jetzt aktualisieren
+                                Topf-Konflikte & Gruppen jetzt aktualisieren
                             </Button>
                             <ListGroup variant="flush" className="mb-3">
                                 <ListGroup.Item variant={konfliktGruppen.length > 0 ? 'warning' : ''}>
@@ -225,26 +241,42 @@ function KonfliktCoordinationPage() {
                             <Card.Text>
                                 Übersicht über Konfliktgruppen der Slots, die eine Koordination und Entscheidung erfordern.
                             </Card.Text>
+                            <ListGroup variant="flush" className="mb-3">  
+                                    <ListGroup.Item variant={anfragenInPipeline.inPruefungSlot > 0 ? 'warning' : ''}>
+                                        Anfragen mit Status 'in Prüfung Slot': <>{anfragenInPipeline.inPruefungSlot}</>
+                                    </ListGroup.Item>
+                                    <ListGroup.Item variant={anfragenInPipeline.inKonfliktSlot > 0 ? 'danger' : ''}>
+                                        Anfragen mit Status 'in Konflikt': <strong>{anfragenInPipeline.inKonfliktSlot}</strong>
+                                    </ListGroup.Item>
+                                    <ListGroup.Item variant={anfragenInPipeline.bestaetigt > 0 ? 'success' : ''}>
+                                        Anfragen mit Status 'Vollständig zugewiesen': <>{anfragenInPipeline.bestaetigt}</>
+                                    </ListGroup.Item>
+                                    <ListGroup.Item variant={anfragenInPipeline.intzw > 0 ? 'info' : ''}>
+                                        Anfragen mit Status 'Teilzuweisung': <>{anfragenInPipeline.intzw}</>
+                                    </ListGroup.Item>
+                                    <ListGroup.Item variant={anfragenInPipeline.abgelehnt > 0 ? 'info' : ''}>
+                                        Anfragen mit Status 'abgelehnt': <>{anfragenInPipeline.abgelehnt}</>
+                                    </ListGroup.Item>
+                                
+                                {/* Hier könnten weitere Status-Zählungen hin */}
+                            </ListGroup>
                             <Button 
-                                onClick={handleKonfliktIdentifizierungStarten} 
+                                onClick={handleSlotKonfliktIdentifizierungStarten} 
                                 disabled={actionInProgress}
                                 variant="secondary"
                                 className="w-100 mb-3"
                             >
                                 <i className="bi bi-arrow-clockwise me-2"></i>
-                                Konflikte & Gruppen jetzt aktualisieren
+                                Slot-Konflikte & Gruppen jetzt aktualisieren
                             </Button>
-                            <ListGroup>
-                                { slotConflicts ? konfliktGruppen.map(gruppe => (
-                                    <ListGroup.Item key={gruppe._id} as={Link} to={`/konflikte/gruppen/${gruppe._id}/bearbeiten`} action>
-                                        <div className="d-flex w-100 justify-content-between">
-                                            <h5 className="mb-1">Gruppe mit {gruppe.beteiligteAnfragen.length} Anfragen</h5>
-                                            <Badge bg="warning" pill>{gruppe.konflikteInGruppe.length} Konflikte</Badge>
-                                        </div>
-                                        <p className="mb-1">Status der Gruppe: <strong>{gruppe.status}</strong></p>
+                            <ListGroup variant="flush" className="mb-3">
+                                <ListGroup.Item variant={konfliktGruppen.length > 0 ? 'warning' : ''}>
+                                        Anzahl Konfliktgruppen: <strong>{konfliktGruppen.length}</strong>
                                     </ListGroup.Item>
-                                )) : <p>Aktuell keine offenen Konfliktgruppen für Slots.</p>}
                             </ListGroup>
+                            <Link to="/gruppen" className="btn btn-primary mb-4 w-100">
+                                <i className="bi bi-kanban me-2"></i>Konfliktgruppen ansehen
+                            </Link>
                         </Card.Body>
                     </Card>
                 </Col>
