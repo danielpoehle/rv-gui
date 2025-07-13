@@ -9,7 +9,7 @@ const DetailRow = ({ label, value }) => (
     <ListGroup.Item className="d-flex justify-content-between align-items-start">
         <div className="ms-2 me-auto">
             <div className="fw-bold">{label}</div>
-            {value}
+            <div className="text-muted">{value}</div>
         </div>
     </ListGroup.Item>
 );
@@ -76,8 +76,24 @@ function KonfliktDetailPage() {
     if (!konfliktData) { return <Alert variant="warning">Keine Konfliktdaten gefunden.</Alert>; }
 
     const { konflikt, gruppenId } = konfliktData;
-    const slotsImKonfliktTopf = konflikt.ausloesenderKapazitaetstopf?.ListeDerSlots || [];
 
+    // --- NEUE LOGIK: Bestimme die Details basierend auf dem Konflikttyp ---
+    const istTopfKonflikt = konflikt.konfliktTyp === 'KAPAZITAETSTOPF';
+    
+    // Das auslösende Objekt (entweder Topf oder Slot)
+    const ausloeser = istTopfKonflikt ? konflikt.ausloesenderKapazitaetstopf : konflikt.ausloesenderSlot;
+    
+    // Die sprechende ID des Auslösers
+    const ausloeserIdSprechend = istTopfKonflikt ? ausloeser?.TopfID : ausloeser?.SlotID_Sprechend;
+
+    // Die maximale Kapazität (variabel für Topf, immer 1 für Slot)
+    const maxKap = istTopfKonflikt ? ausloeser?.maxKapazitaet : 1;
+
+    // Die Liste der Slots, die wir anzeigen wollen
+    const slotsAnzeigen = istTopfKonflikt ? ausloeser?.ListeDerSlots || [] : (ausloeser ? [ausloeser] : []);
+    const slotListenHeader = istTopfKonflikt ? `Slots im auslösenden Kapazitätstopf (${slotsAnzeigen.length})` : "Konflikt-Slot";
+    // -------------------------------------------------------------------
+    
 
     return (
         <Container>
@@ -85,32 +101,30 @@ function KonfliktDetailPage() {
                 <i className="bi bi-arrow-left me-2"></i>Zur Konflikt-Übersicht
             </Link>
 
-            {/* --- HAUPTDETAILS DES KONFLIKTS --- */}
+            {/* --- HAUPTDETAILS DES KONFLIKTS (ANGEPASST) --- */}
             <Card className="mb-4 shadow-sm">
                 <Card.Header as="h3">Konflikt-Details</Card.Header>
                 <Card.Body>
                      <ListGroup variant="flush">
                         <DetailRow label="Konflikt-ID" value={<code>{konflikt._id}</code>} />
+                        {gruppenId && (
+                            <DetailRow label="Zugehörige Konfliktgruppe" value={<Link to={`/konflikte/gruppen/${gruppenId}/bearbeiten`}><code>{gruppenId}</code></Link>} />
+                        )}
                         <DetailRow label="Konflikt-Typ" value={<Badge bg="info">{konflikt.konfliktTyp}</Badge>} />
                         <DetailRow label="Status" value={<Badge bg={getKonfliktStatusBadgeVariant(konflikt.status)} pill>{konflikt.status}</Badge>} />
                         <DetailRow 
-                            label={`Auslösender ${konflikt.konfliktTyp === 'KAPAZITAETSTOPF' ? 'Kapazitätstopf' : 'Slot'}`} 
-                            value={<code>{konflikt.ausloesenderKapazitaetstopf?.TopfID || konflikt.ausloesenderSlot?.SlotID_Sprechend || 'N/A'}</code>}
+                            label={`Auslösender ${istTopfKonflikt ? 'Kapazitätstopf' : 'Slot'}`} 
+                            value={<code>{ausloeserIdSprechend || 'N/A'}</code>}
                         />
-                        <DetailRow label="Anfragen vs. maximale Kapazität" value={`${konflikt.beteiligteAnfragen.length} vs. ${konflikt.ausloesenderKapazitaetstopf.maxKapazitaet}`} />
-                        <DetailRow label="Konflikt-Gruppe" value={
-                            gruppenId ? (
-                                    <Link to={`/konflikte/gruppen/${gruppenId}/bearbeiten`}>
-                                        <code>{gruppenId}</code>
-                                    </Link>
-                                ) : (
-                                    '-'
-                                )
-                        } />
+                        <DetailRow 
+                            label="Aktive Anfragen vs. maximale Kapazität" 
+                            value={`${konflikt.beteiligteAnfragen.length} / ${maxKap ?? 'N/A'}`} 
+                        />
                      </ListGroup>
                 </Card.Body>
             </Card>
 
+            {/* --- VERLAUF & NOTIZEN (unverändert) --- */}
             <Card className="mb-4 shadow-sm">
                 <Card.Header as="h4">
                     <i className="bi bi-body-text me-2"></i>Verlauf & Notizen
@@ -133,7 +147,7 @@ function KonfliktDetailPage() {
                 </Card.Body>
             </Card>
 
-             {/* --- BETEILIGTE ANFRAGEN --- */}
+            {/* --- BETEILIGTE ANFRAGEN (unverändert) --- */}
             <Card className="mb-4 shadow-sm">
                 <Card.Header as="h4">Beteiligte Anfragen ({konflikt.beteiligteAnfragen.length})</Card.Header>
                 <ListGroup variant="flush">
@@ -149,28 +163,29 @@ function KonfliktDetailPage() {
                 </ListGroup>
             </Card>
             
-            {/* --- BETEILIGTE SLOTS --- */}
+            {/* --- BETEILIGTE SLOTS (ANGEPASST) --- */}
             <Card className="mb-4 shadow-sm">
-                 <Card.Header as="h4">Slots im auslösenden Kapazitätstopf ({slotsImKonfliktTopf.length})</Card.Header>
+                 <Card.Header as="h4">{slotListenHeader}</Card.Header>
                  <Table striped hover size="sm" className="mb-0">
                     <thead><tr><th>Slot ID</th><th>Linie</th><th>Abschnitt</th><th>Belegung</th></tr></thead>
                     <tbody>
-                        {slotsImKonfliktTopf.map(slot => ( // Iteriere jetzt über die neue Variable
+                        {slotsAnzeigen.length > 0 ? slotsAnzeigen.map(slot => (
                             <tr key={slot._id}>
                                 <td><code>{slot.SlotID_Sprechend}</code></td>
                                 <td>{slot.Linienbezeichnung || '-'}</td>
                                 <td>{slot.Abschnitt}</td>
                                 <td>{getSlotBelegungBadge(slot)}</td>
                             </tr>
-                        ))}
+                        )) : (
+                            <tr><td colSpan="4" className="text-center text-muted">Keine Slots zuzuordnen.</td></tr>
+                        )}
                     </tbody>
                  </Table>
             </Card>
-
-            {/* Hier könnten weitere Cards für die Resolution-Details folgen, die nur bei Bedarf angezeigt werden */}
 
         </Container>
     );
 }
 
+    
 export default KonfliktDetailPage;

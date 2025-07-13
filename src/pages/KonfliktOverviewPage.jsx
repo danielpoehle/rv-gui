@@ -136,56 +136,77 @@ function KonfliktOverviewPage() {
                     <Table striped bordered hover responsive size="sm" className="shadow-sm">
                         <thead className="table-dark">
                             <tr>
-                                <th>Kapazitätstopf</th>
+                                <th>Typ</th>
+                                <th>Auslöser ID</th>
                                 <th>VA</th>
-                                <th>Max. Kap.</th>
+                                <th>Kapazität (Belegt / Max)</th>
                                 <th>Beteiligte Anfr.</th>
-                                <th>Zugewiesene Anfr.</th>
-                                <th>Abgelehnt/Verzicht</th>
                                 <th>Konflikt-Status</th>
-                                <th>Details</th>
                                 <th>Aktion</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {konflikte.map(konflikt => (
-                                <tr key={konflikt._id}>
-                                    <td><code>{konflikt.ausloesenderKapazitaetstopf?.TopfID || 'N/A'}</code></td>
-                                    <td>
-                                        <Badge bg={verkehrsartColorMap[konflikt.ausloesenderKapazitaetstopf?.Verkehrsart] || 'secondary'}>
-                                            {konflikt.ausloesenderKapazitaetstopf?.Verkehrsart || 'N/A'}
-                                        </Badge>
-                                    </td>
-                                    <td>{konflikt.ausloesenderKapazitaetstopf?.maxKapazitaet ?? 'N/A'}</td>
-                                    <td className="fw-bold">{konflikt.statistik.anzahlBeteiligter}</td>
-                                    <td>{konflikt.statistik.anzahlZugewiesener}</td>
-                                    <td>{konflikt.statistik.anzahlAbgelehnter}</td>
-                                    <td>
-                                        <Badge bg={getKonfliktStatusBadgeVariant(konflikt.status)} pill>
-                                            {konflikt.status}
-                                        </Badge>
-                                    </td>
-                                    <td>
-                                        <Link to={`/konflikte/${konflikt._id}`}>
-                                            <Button variant="outline-primary" size="sm" title="Details anzeigen">
-                                                <i className="bi bi-search"></i>
-                                            </Button>
-                                        </Link>
-                                    </td>
-                                    <td>
-                                        {konflikt.gruppenId ? (
-                                            <Link to={`/konflikte/gruppen/${konflikt.gruppenId}/bearbeiten`}>
-                                                <Button variant="outline-primary" size="sm" title="Gruppe bearbeiten">
-                                                    <i className="bi bi-tools"></i> Gruppe bearbeiten
+                            {konflikte.map(konflikt => {
+                                // --- HIER DIE NEUE LOGIK zur Unterscheidung ---
+                                const istTopfKonflikt = konflikt.konfliktTyp === 'KAPAZITAETSTOPF';
+                                
+                                const ausloeser = istTopfKonflikt 
+                                    ? konflikt.ausloesenderKapazitaetstopf 
+                                    : konflikt.ausloesenderSlot;
+                                
+                                const ausloeserIdSprechend = istTopfKonflikt 
+                                    ? ausloeser?.TopfID 
+                                    : ausloeser?.SlotID_Sprechend;
+                                
+                                const verkehrsart = ausloeser?.Verkehrsart || 'N/A';
+                                
+                                // Kapazität für die Anzeige bestimmen
+                                const maxKap = istTopfKonflikt ? ausloeser?.maxKapazitaet : 1;
+                                const belegt = konflikt.statistik.anzahlBeteiligter; // Die Anzahl aktiver Anfragen
+
+                                return (
+                                    <tr key={konflikt._id}>
+                                        <td>
+                                            <Badge bg={istTopfKonflikt ? 'secondary' : 'primary'} text={istTopfKonflikt ? '' : ''}>
+                                                {konflikt.konfliktTyp}
+                                            </Badge>
+                                        </td>
+                                        <td><code>{ausloeserIdSprechend || 'N/A'}</code></td>
+                                        <td>
+                                            <Badge bg={verkehrsartColorMap[verkehrsart] || 'secondary'}>
+                                                {verkehrsart}
+                                            </Badge>
+                                        </td>
+                                        <td className={belegt > maxKap ? 'text-danger fw-bold' : ''}>
+                                            {belegt} / {maxKap ?? 'N/A'}
+                                        </td>
+                                        <td>{konflikt.statistik.anzahlBeteiligter}</td>
+                                        <td>
+                                            <Badge bg={getKonfliktStatusBadgeVariant(konflikt.status)} pill>
+                                                {konflikt.status}
+                                            </Badge>
+                                        </td>
+                                        <td>
+                                            {/* Der Link zur Gruppen-Bearbeitung funktioniert für beide Typen, wenn Gruppen IDs haben */}
+                                            {konflikt.gruppenId ? (
+                                                <Link to={`/konflikte/gruppen/${konflikt.gruppenId}/bearbeiten`}>
+                                                    <Button variant="primary" size="sm" title="Gruppe bearbeiten">
+                                                        <i className="bi bi-tools"></i>
+                                                    </Button>
+                                                </Link>
+                                            ) : (
+                                                <Button variant="secondary" size="sm" disabled>Einzel</Button>
+                                            )}
+                                            {/* Der Link zur Detail-Seite funktioniert immer */}
+                                            <Link to={`/konflikte/${konflikt._id}`} className="ms-2">
+                                                <Button variant="outline-secondary" size="sm" title="Details anzeigen">
+                                                    <i className="bi bi-search"></i>
                                                 </Button>
                                             </Link>
-                                        ) : (
-                                            // Fallback, falls es ein Einzelkonflikt ohne Gruppe ist
-                                            <Button variant="secondary" size="sm" disabled>Einzel</Button>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </Table>
                     {/* Paginierungs-Steuerung, wird nur angezeigt, wenn es mehr als eine Seite gibt */}
