@@ -146,7 +146,10 @@ function KonfliktGruppenCoordinationPage() {
         setActionInProgress(true);
         setActionFeedback('Verarbeite Verzichte...');
         try {
-            // ANPASSUNG: Der Payload ist jetzt viel einfacher.
+            const konflikttyp = gruppe.konflikteInGruppe[0]?.konfliktTyp;
+            const endpoint = konflikttyp === 'KAPAZITAETSTOPF'
+                ? `/konflikte/gruppen/${gruppenId}/verzicht-verschub`
+                : `/konflikte/slot-gruppen/${gruppenId}/verzicht-verschub`;
             const payload = {
                 // konfliktDokumentIds wird nicht mehr benötigt
                 ListeAnfragenMitVerzicht: Array.from(verzichte)
@@ -154,7 +157,7 @@ function KonfliktGruppenCoordinationPage() {
             };
 
             // Der API-Aufruf bleibt gleich, aber mit einfacherem Payload
-            const response = await apiClient.put(`/konflikte/gruppen/${gruppenId}/verzicht-verschub`, payload);
+            const response = await apiClient.put(endpoint, payload);
 
             setActionFeedback(response.data.message);
             await fetchData(); // Lade die Daten neu, um den aktualisierten Status zu sehen
@@ -172,6 +175,10 @@ function KonfliktGruppenCoordinationPage() {
         setActionInProgress(true);
         setActionFeedback('Führe Entgeltvergleich durch...');
         try {
+            const konflikttyp = gruppe.konflikteInGruppe[0]?.konfliktTyp;
+            const endpoint = konflikttyp === 'KAPAZITAETSTOPF'
+                ? `/konflikte/gruppen/${gruppenId}/entgeltvergleich`
+                : `/konflikte/slot-gruppen/${gruppenId}/entgeltvergleich`;
             // Erstelle den Payload mit den vom Nutzer geordneten Reihungen
             const payload = {
                 evuReihungen: Object.entries(evuReihungen).map(([evu, anfrageIds]) => ({
@@ -179,7 +186,7 @@ function KonfliktGruppenCoordinationPage() {
                     anfrageIds
                 }))
             };
-            const response = await apiClient.put(`/konflikte/gruppen/${gruppenId}/entgeltvergleich`, payload); // Leerer Body genügt
+            const response = await apiClient.put(endpoint, payload);
             setActionFeedback(response.data.message);
             fetchData(); // Lade die Daten neu, um den aktualisierten Status und die Reihung zu sehen
         } catch(err) {
@@ -204,6 +211,11 @@ function KonfliktGruppenCoordinationPage() {
         setActionInProgress(true);
         setActionFeedback('Verarbeite Höchstpreis-Gebote...');
         try {
+            const konflikttyp = gruppe.konflikteInGruppe[0]?.konfliktTyp;
+            const endpoint = konflikttyp === 'KAPAZITAETSTOPF'
+                ? `/konflikte/gruppen/${gruppenId}/hoechstpreis-ergebnis`
+                : `/konflikte/slot-gruppen/${gruppenId}/hoechstpreis-ergebnis`;
+
             // Erstelle den Payload aus dem `gebote`-State
             const payload = {
                 ListeGeboteHoechstpreis: Object.entries(gebote).map(([anfrageId, gebot]) => ({
@@ -212,7 +224,7 @@ function KonfliktGruppenCoordinationPage() {
                 }))
             };
 
-            const response = await apiClient.put(`/konflikte/gruppen/${gruppenId}/hoechstpreis-ergebnis`, payload);
+            const response = await apiClient.put(endpoint, payload);
             setActionFeedback(response.data.message);
             fetchData(); // Lade die Daten neu, um den finalen Status zu sehen
         } catch(err) {
@@ -226,12 +238,25 @@ function KonfliktGruppenCoordinationPage() {
 
     // Abgeleitete Daten für die Zusammenfassung
     const summary = useMemo(() => {
-        if (!gruppe) return {};
-        const kws = new Set(gruppe.konflikteInGruppe.map(k => k.ausloesenderKapazitaetstopf?.Kalenderwoche));
-        const vts = new Set(gruppe.konflikteInGruppe.map(k => k.ausloesenderKapazitaetstopf?.Verkehrstag));
-        const abschnitte = new Set(gruppe.konflikteInGruppe.map(k => k.ausloesenderKapazitaetstopf?.Abschnitt));
+        if (!gruppe || !gruppe.konflikteInGruppe || gruppe.konflikteInGruppe.length === 0) return {};
+
+        const istTopfKonfliktGruppe = gruppe.konflikteInGruppe[0]?.konfliktTyp === 'KAPAZITAETSTOPF';
+
+        //hier noch Anpassungen für Slot-Konflikte?
+        const kws = new Set(gruppe.konflikteInGruppe.map(k => 
+            istTopfKonfliktGruppe ? k.ausloesenderKapazitaetstopf?.Kalenderwoche : k.ausloesenderSlot?.Kalenderwoche
+        ));
+        const vts = new Set(gruppe.konflikteInGruppe.map(k => 
+            istTopfKonfliktGruppe ? k.ausloesenderKapazitaetstopf?.Verkehrstag : k.ausloesenderSlot?.Verkehrstag
+        ));
+        const abschnitte = new Set(gruppe.konflikteInGruppe.map(k => 
+            istTopfKonfliktGruppe ? k.ausloesenderKapazitaetstopf?.Abschnitt : `${k.ausloesenderSlot?.von}-${k.ausloesenderSlot?.bis}`
+        ));
         const vas = new Set(gruppe.beteiligteAnfragen.map(a => a.Verkehrsart));
-        const zf = new Set(gruppe.konflikteInGruppe.map(k => k.ausloesenderKapazitaetstopf?.Zeitfenster));
+        
+        // Das Zeitfenster existiert nur bei Topf-Konflikten
+        const zf = istTopfKonfliktGruppe ? new Set(gruppe.konflikteInGruppe.map(k => k.ausloesenderKapazitaetstopf?.Zeitfenster)) : new Set('-');
+        
         return {
             konfliktTyp: gruppe.konflikteInGruppe[0]?.konfliktTyp || 'KAPAZITAETSTOPF',
             anzahlToepfe: gruppe.konflikteInGruppe.length,
@@ -245,23 +270,40 @@ function KonfliktGruppenCoordinationPage() {
 
     // useMemo-Hook zum Filtern der Höchstpreis-Kandidaten
     const hoechstpreisKandidaten = useMemo(() => {
-        if (!gruppe) return [];
+        if (!gruppe || !gruppe.beteiligteAnfragen) return [];
+
+        const istTopfKonfliktGruppe = gruppe.konflikteInGruppe[0]?.konfliktTyp === 'KAPAZITAETSTOPF';
 
         // 1. Sammle die IDs aller Töpfe, die zu dieser Konfliktgruppe gehören
+        const wartetStatus = istTopfKonfliktGruppe ? 'wartet_hoechstpreis_topf' : 'wartet_hoechstpreis_slot';        
         const topfIdsInGruppe = new Set(
-            gruppe.konflikteInGruppe.map(k => k.ausloesenderKapazitaetstopf?._id.toString())
+            gruppe.konflikteInGruppe.map(k => {
+                const ausloeser = istTopfKonfliktGruppe 
+                        ? k.ausloesenderKapazitaetstopf 
+                        : k.ausloesenderSlot;
+
+                return ausloeser?._id?.toString() || null;
+            })
         );
 
         // 2. Filtere die beteiligten Anfragen
         return gruppe.beteiligteAnfragen.filter(anfrage => {
+            if (!anfrage.ZugewieseneSlots) return false;
             // Eine Anfrage ist ein Kandidat, wenn sie mindestens eine Slot-Zuweisung hat, die:
-            // a) zu einem der Töpfe in dieser Gruppe gehört UND
-            // b) den Status 'wartet_hoechstpreis_topf' hat.
+            // a) zu einem der Töpfe oder Slots in dieser Gruppe gehört UND
+            // b) ...den korrekten "wartet auf Höchstpreis"-Status hat
             return anfrage.ZugewieseneSlots.some(zuweisung => {
-                const hatWartestatus = zuweisung.statusEinzelzuweisung === 'wartet_hoechstpreis_topf';
-                const gehoertZuGruppe = zuweisung.slot && zuweisung.slot.VerweisAufTopf && topfIdsInGruppe.has(zuweisung.slot.VerweisAufTopf.toString());
+                if (!zuweisung.slot) return false;
+                const hatWartestatus = zuweisung.statusEinzelzuweisung === wartetStatus;
+                if (!hatWartestatus) return false;
                 
-                return hatWartestatus && gehoertZuGruppe;
+                const gehoertZuGruppe = istTopfKonfliktGruppe
+                    // Bei Topf-Konflikt: Prüfe den VerweisAufTopf des Slots
+                    ? (zuweisung.slot.VerweisAufTopf && topfIdsInGruppe.has(zuweisung.slot.VerweisAufTopf.toString()))
+                    // Bei Slot-Konflikt: Prüfe die ID des Slots selbst
+                    : topfIdsInGruppe.has(zuweisung.slot._id.toString());
+                
+                return gehoertZuGruppe;
             });
         });
     }, [gruppe]); // Wird nur neu berechnet, wenn sich das `gruppe`-Objekt ändert
@@ -278,7 +320,7 @@ function KonfliktGruppenCoordinationPage() {
     return (
         <Container>
             {/* --- ZUSAMMENFASSUNG DER GRUPPE --- */}
-            {actionFeedback && <Alert variant="info">{actionFeedback}</Alert>}
+            {actionFeedback && <Alert variant="info" onClose={() => setActionFeedback('')} dismissible>{actionFeedback}</Alert>}
             <Card className="mb-4">
                 <Card.Header as="h2">Konfliktgruppe bearbeiten: <code>{gruppe._id}</code></Card.Header>
                 <Card.Body>
@@ -310,7 +352,10 @@ function KonfliktGruppenCoordinationPage() {
                         </tbody>
                     </Table>
                 </Card.Body>
-                <Card.Footer><strong>Aktueller Status der Gruppe:</strong> <Badge bg={getGruppeStatusBadgeVariant(gruppe.status)}><span className="fw-bold">{gruppe.status.toUpperCase()}</span></Badge></Card.Footer>
+                <Card.Footer>
+                    <strong>Aktueller Status der Gruppe:</strong> <Badge bg={getGruppeStatusBadgeVariant(gruppe.status)}><span className="fw-bold">{gruppe.status.toUpperCase()}</span></Badge>
+                    <strong className="ms-3">Typ:</strong> <Badge bg="info">{gruppe.konflikteInGruppe[0]?.konfliktTyp}</Badge>
+                    </Card.Footer>
             </Card>
 
             {/* --- AKKORDION FÜR DIE LÖSUNGSPHASEN --- */}
@@ -360,10 +405,10 @@ function KonfliktGruppenCoordinationPage() {
                         <p>
                             Dieser Bereich wird aktiv, wenn nach der Verzicht-Phase weiterhin ein Konflikt besteht. 
                             Das System ermittelt automatisch eine Reihung basierend auf den Entgelten der verbleibenden Anfragen.
-                            Wenn ein EVU mehr Anfragen im Konflikt hat als sein Marktanteil-Limit erlaubt,
+                            Wenn ein EVU mehr Anfragen in einem Topf- Konflikt hat als sein Marktanteil-Limit erlaubt,
                             legen Sie bitte nach dessen Rückmeldung die Priorisierung durch Sortieren fest.
                         </p>
-                        {evusDieReihungBenötigen.length > 0 && (
+                        {gruppe.konflikteInGruppe[0]?.konfliktTyp === 'KAPAZITAETSTOPF' && evusDieReihungBenötigen.length > 0 && (
                             <Card className="my-3">
                                 <Card.Header className="bg-warning text-dark">Manuelle EVU-Reihung erforderlich</Card.Header>
                                 <ListGroup variant="flush">
@@ -502,19 +547,39 @@ function KonfliktGruppenCoordinationPage() {
                 </Accordion.Item>
             </Accordion>
 
-            <h4 className="mt-4">Zugeordnete Kapazitätstöpfe </h4>
-            <ListGroup>
-                {gruppe.konflikteInGruppe.map(k => (
-                    <ListGroup.Item 
-                        key={k.ausloesenderKapazitaetstopf._id} 
-                        className="d-flex justify-content-between align-items-center"
-                        >
-                        <code>{k.ausloesenderKapazitaetstopf.TopfID}</code>
-                                    
-                        Max. Kapazität {k.ausloesenderKapazitaetstopf.maxKapazitaet}
-                    </ListGroup.Item>
-                ))}
-            </ListGroup>
+            {/* --- ANPASSUNG: Detailliste der Auslöser (Töpfe oder Slots) --- */}
+            <Card className="mt-4 shadow-sm">
+                <Card.Header as="h4">
+                    {/* Dynamischer Titel basierend auf dem Gruppentyp */}
+                    {gruppe.konflikteInGruppe[0]?.konfliktTyp === 'KAPAZITAETSTOPF' 
+                        ? `Konflikte in Kapazitätstöpfen (Anzahl: ${gruppe.konflikteInGruppe.length})`
+                        : `Konflikte auf Slots (Anzahl: ${gruppe.konflikteInGruppe.length})`
+                    }
+                </Card.Header>
+                <ListGroup variant="flush">
+                    {gruppe.konflikteInGruppe.map(k => {
+                        // Bestimme, ob es sich um einen Topf- oder Slot-Konflikt handelt
+                        const istTopfKonflikt = gruppe.konflikteInGruppe[0]?.konfliktTyp === 'KAPAZITAETSTOPF';
+                        
+                        const ausloeser = istTopfKonflikt ? k.ausloesenderKapazitaetstopf : k.ausloesenderSlot;
+                        const sprechendeId = istTopfKonflikt ? ausloeser?.TopfID : ausloeser?.SlotID_Sprechend;
+                        const kapazitaetText = istTopfKonflikt 
+                            ? `Max. Kapazität: ${ausloeser?.maxKapazitaet ?? 'N/A'}`
+                            : `Max. Kapazität: 1`;
+
+                        // Verwende die ID des Konfliktdokuments selbst als stabilen Key
+                        return (
+                            <ListGroup.Item 
+                                key={k._id} 
+                                className="d-flex justify-content-between align-items-center"
+                            >
+                                <code>{sprechendeId || 'Unbekannt'}</code>
+                                <Badge bg="light" text="dark">{kapazitaetText}</Badge>
+                            </ListGroup.Item>
+                        );
+                    })}
+                </ListGroup>
+            </Card>
             
             {/* Modal zur Anzeige der Analyse-Ergebnisse */}
             <Modal show={showAnalyseModal} onHide={() => setShowAnalyseModal(false)} size="lg">
