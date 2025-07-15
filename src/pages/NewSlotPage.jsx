@@ -51,7 +51,7 @@ function NewSlotPage() {
         };
 
         try {
-            const response = await axios.post('http://localhost:5001/api/slots/massen-erstellung', payload);
+            const response = await axios.post(import.meta.env.VITE_API_BASE_URL + '/slots/massen-erstellung', payload);
             setSuccess(`Erfolg! ${response.data.erstellteSlots.length} Slots wurden erstellt. Fehler: ${response.data.fehler.length}.`);
             // Optional: Nach Erfolg weiterleiten
             // setTimeout(() => navigate('/slots'), 2000);
