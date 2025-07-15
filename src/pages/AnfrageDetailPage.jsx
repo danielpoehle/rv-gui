@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
-import { Container, Card, Row, Col, Spinner, Alert, Badge, ListGroup, Table } from 'react-bootstrap';
+import { Container, Card, Row, Col, Spinner, Alert, Badge, ListGroup, Table, Button } from 'react-bootstrap';
 import { format } from 'date-fns';
 import { parseISO } from 'date-fns/fp';
 
@@ -55,6 +55,7 @@ function AnfrageDetailPage() {
     const [anfrage, setAnfrage] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const navigate = useNavigate(); // Hook für die Weiterleitung
 
     useEffect(() => {
         const fetchAnfrage = async () => {
@@ -73,6 +74,22 @@ function AnfrageDetailPage() {
         fetchAnfrage();
     }, [anfrageId]);
 
+    const handleReset = async () => {
+        if (!window.confirm("Möchten Sie die Slot-Zuweisung für diese Anfrage wirklich zurücksetzen? Alle Zuweisungen gehen dabei verloren und das Entgelt wird auf 0 gesetzt. Dies ist nur möglich, wenn die Anfrage in keinem Konflikt beteiligt ist.")) {
+            return;
+        }
+
+        try {
+            await apiClient.post(`/anfragen/${anfrageId}/reset-zuordnung`);
+            // Nach Erfolg zur Übersichtsseite navigieren
+            navigate('/anfragen');
+        } catch (err) {
+            // Zeige einen Fehler an (z.B. mit einem Alert-State)
+            console.error("Fehler beim Reset:", err);
+            alert(err.response?.data?.message || "Ein Fehler ist aufgetreten.");
+        }
+    };
+
 
     if (loading) { return <div className="text-center mt-5"><Spinner animation="border" /></div>; }
     if (error) { return <Alert variant="danger">{error}</Alert>; }
@@ -80,9 +97,16 @@ function AnfrageDetailPage() {
     
     return (
         <Container>
-            <Link to="/anfragen" className="btn btn-secondary mb-4">
-                <i className="bi bi-arrow-left me-2"></i>Zurück zur Übersicht Anfragen
-            </Link>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+                <Link to="/anfragen" className="btn btn-secondary mb-4">
+                    <i className="bi bi-arrow-left me-2"></i>Zurück zur Übersicht Anfragen
+                </Link>
+                {anfrage  && (
+                    <Button variant="outline-danger" onClick={handleReset}>
+                        <i className="bi bi-arrow-counterclockwise me-2"></i>Anfrage auf Status validiert zurücksetzen
+                    </Button>
+                )}
+            </div>            
             <Card className="shadow-sm">
                 <Card.Header as="h3">
                     Details für Anfrage: <code>{anfrage.AnfrageID_Sprechend}</code>
