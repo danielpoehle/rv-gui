@@ -16,7 +16,7 @@ function SlotOverviewPage() {
     // STATE-VARIABLEN für Paginierung
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
-    const [limitPerPage] = useState(15); // Wie viele Einträge pro Seite
+    const [limitPerPage] = useState(12); // Wie viele Einträge pro Seite
 
 
     // useEffect wird jetzt bei Änderungen von `currentPage` neu ausgeführt
@@ -130,6 +130,11 @@ function SlotOverviewPage() {
                     <Link to="/slots/summary" className="me-2">
                         <Button variant="info">
                             <i className="bi bi-bar-chart-line-fill me-2"></i>Zusammenfassung Slots nach Linien
+                        </Button>
+                    </Link>
+                    <Link to="/slots/counter" className="me-2">
+                        <Button variant="dark">
+                            <i className="bi bi-clipboard2-data me-2"></i>Slot-Inventar
                         </Button>
                     </Link>
                     <Link to="/slots/neu">
