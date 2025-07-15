@@ -73,8 +73,8 @@ function SlotSummaryPage() {
                                 <td>{item.anzahlSlots}</td>
                                 <td>{item.minKW === item.maxKW ? item.minKW : `${item.minKW} - ${item.maxKW}`}</td>
                                 <td>
-                                    <Badge bg="success" className="me-1" title="Komplett frei">Frei: {item.belegung.frei}</Badge>
-                                    <Badge bg="secondary" className="me-1" title="Einfach belegt">Einfach: {item.belegung.einfach}</Badge>
+                                    <Badge bg="secondary" className="me-1" title="Komplett frei">Frei: {item.belegung.frei}</Badge>
+                                    <Badge bg="success" className="me-1" title="Einfach belegt">Einfach: {item.belegung.einfach}</Badge>
                                     <Badge bg="danger" title="Mehrfach belegt (Konflikt!)">
                                         Mehrfach: {item.belegung.mehrfach}
                                     </Badge>

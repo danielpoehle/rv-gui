@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 import { Container, Card, Button, Spinner, Alert, ListGroup, Row, Col, Table, Form, Accordion, Modal, Badge } from 'react-bootstrap';
+import { Link } from 'react-router-dom';
 
 // Wir lagern die Analyse-Ergebnis-Anzeige in eigene kleine Komponenten aus
 const VerschiebeAnalyseView = ({ data }) => ( <pre>{JSON.stringify(data, null, 2)}</pre> );
@@ -10,11 +11,14 @@ const AlternativenAnalyseView = ({ data }) => ( <pre>{JSON.stringify(data, null,
 
 // Helfer für Status-Farben
 const getGruppeStatusBadgeVariant = (status) => {
-    switch (status) {
-        case 'offen': return 'warning';
-        case 'vollstaendig_geloest': return 'success';
-        default: return 'info'; // Alle "in_bearbeitung..."
-    }
+    if (!status) return 'secondary';
+    if (status.startsWith('vollstaendig_final')) return 'success';
+    if (status.startsWith('vollstaendig_geloest')) return 'success';
+    if (status.startsWith('teilweise_final')) return 'success';
+    if (status.startsWith('final_abgelehnt')) return 'danger';
+    if (status.startsWith('in_konflikt')) return 'warning';
+    if (status.startsWith('validiert')) return 'info';
+    return 'secondary';
 };
 
 const verkehrsartColorMap = {
@@ -319,6 +323,9 @@ function KonfliktGruppenCoordinationPage() {
 
     return (
         <Container>
+            <Link to="/gruppen" className="btn btn-secondary mb-4">
+                <i className="bi bi-arrow-left me-2"></i>Zurück zur Übersicht Konfliktgruppen
+            </Link>
             {/* --- ZUSAMMENFASSUNG DER GRUPPE --- */}
             {actionFeedback && <Alert variant="info" onClose={() => setActionFeedback('')} dismissible>{actionFeedback}</Alert>}
             <Card className="mb-4">
@@ -340,13 +347,16 @@ function KonfliktGruppenCoordinationPage() {
                     <Table striped bordered size="sm">
                         <thead><tr><th>Anfrage ID</th><th>EVU</th><th>E-Mail</th><th>Entgelt (€)</th><th>Aktueller Status</th></tr></thead>
                         <tbody>
-                            {gruppe.beteiligteAnfragen.map(a => (
+                            {[...gruppe.beteiligteAnfragen].sort((a, b) => {
+                                return (a.AnfrageID_Sprechend || '').localeCompare(b.AnfrageID_Sprechend || '');
+                            })
+                            .map(a => (
                                 <tr key={a._id}>
                                     <td><code>{a.AnfrageID_Sprechend}</code></td>
                                     <td>{a.EVU}</td>
                                     <td>{a.Email}</td>
                                     <td>{a.Entgelt?.toFixed(2) || 'N/A'}</td>
-                                    <td><Badge pill bg="info">{a.Status}</Badge></td>
+                                    <td><Badge pill bg={getGruppeStatusBadgeVariant(a.Status)}>{a.Status}</Badge></td>
                                 </tr>
                             ))}
                         </tbody>
@@ -370,7 +380,10 @@ function KonfliktGruppenCoordinationPage() {
                     <Accordion.Body>
                         <p>Wähle die Anfragen aus, die auf die Zuweisung in dieser Konfliktgruppe verzichten.</p>
                         <ListGroup className="mb-3">
-                            {gruppe.beteiligteAnfragen.map(a => (
+                            {[...gruppe.beteiligteAnfragen].sort((a, b) => {
+                                return (a.AnfrageID_Sprechend || '').localeCompare(b.AnfrageID_Sprechend || '');
+                            })
+                            .map(a => (
                                 <ListGroup.Item key={a._id}>
                                     <Form.Check 
                                         type="checkbox"
@@ -506,7 +519,10 @@ function KonfliktGruppenCoordinationPage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {hoechstpreisKandidaten.map(kandidat => {
+                                        {[...hoechstpreisKandidaten].sort((a, b) => {
+                                            return (a.AnfrageID_Sprechend || '').localeCompare(b.AnfrageID_Sprechend || '');
+                                        })
+                                        .map(kandidat => {
                                             const aktuellesGebot = gebote[kandidat._id] || '';
                                             const istGebotUngueltig = aktuellesGebot !== '' && parseFloat(aktuellesGebot) <= (kandidat.Entgelt || 0);
 

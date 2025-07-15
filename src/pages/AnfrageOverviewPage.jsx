@@ -8,10 +8,11 @@ import { format, parseISO } from 'date-fns'; // Für Datumsformatierung
 // Helferfunktion für die Anfrage-Status-Farben (könnte in eine Util-Datei ausgelagert werden)
 const getAnfrageStatusBadgeVariant = (status) => {
     if (!status) return 'secondary';
-    if (status.startsWith('bestaetigt')) return 'success';
-    if (status.startsWith('abgelehnt')) return 'danger';
-    if (status.startsWith('wartet')) return 'warning';
-    if (status.startsWith('in_konflikt')) return 'info';
+    if (status.startsWith('vollstaendig_final')) return 'success';
+    if (status.startsWith('teilweise_final')) return 'success';
+    if (status.startsWith('final_abgelehnt')) return 'danger';
+    if (status.startsWith('in_konflikt')) return 'warning';
+    if (status.startsWith('validiert')) return 'info';
     return 'secondary';
 };
 

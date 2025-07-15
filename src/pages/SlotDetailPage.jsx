@@ -64,11 +64,11 @@ function SlotDetailPage() {
     }, [slotId]); // Effekt neu ausführen, wenn sich die slotId in der URL ändert
 
     const getBelegungsstatus = () => {
-        if (!slot || !slot.zugewieseneAnfragen) return { text: 'Unbekannt', color: 'secondary' };
+        if (!slot || !slot.zugewieseneAnfragen) return { text: 'Unbekannt', color: 'dark' };
         const anzahl = slot.zugewieseneAnfragen.length;
-        if (anzahl === 0) return { text: 'Frei', color: 'success' };
-        if (anzahl === 1) return { text: 'Einfach belegt', color: 'secondary' };
-        return { text: 'Mehrfach belegt (Konflikt)', color: 'danger' };
+        if (anzahl === 0) return { text: 'Frei', color: 'secondary' };
+        if (anzahl === 1) return { text: 'Einfach', color: 'success' };
+        return { text: 'Mehrfach ', color: 'danger' };
     };
 
     if (loading) { return <div className="text-center mt-5"><Spinner animation="border" /></div>; }

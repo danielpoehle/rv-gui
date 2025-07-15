@@ -58,9 +58,9 @@ function KapazitaetstopfDetailPage() {
     const getSlotBelegung = (slot) => {
         if (!slot || !slot.zugewieseneAnfragen) return { text: 'Unbekannt', color: 'secondary' };
         const anzahl = slot.zugewieseneAnfragen.length;
-        if (anzahl === 0) return { text: 'Frei', color: 'success' };
-        if (anzahl === 1) return { text: 'Einfach belegt', color: 'primary' };
-        return { text: 'Mehrfach belegt', color: 'danger' };
+        if (anzahl === 0) return { text: 'Frei', color: 'secondary' };
+        if (anzahl === 1) return { text: 'Einfach', color: 'success' };
+        return { text: 'Mehrfach', color: 'danger' };
     };
 
     if (loading) { return <div className="text-center mt-5"><Spinner animation="border" /></div>; }
@@ -118,7 +118,10 @@ function KapazitaetstopfDetailPage() {
                     <hr />
                     <h4 className="mt-4">Zugeordnete Anfragen ({topf.ListeDerAnfragen.length})</h4>
                     <ListGroup className="mt-3">
-                        {topf.ListeDerAnfragen.map(anfrage => (
+                        {[...topf.ListeDerAnfragen].sort((a,b) =>{
+                            return (a.AnfrageID_Sprechend || '').localeCompare(b.AnfrageID_Sprechend || '');
+                        })
+                        .map(anfrage => (
                             <ListGroup.Item key={anfrage._id} className="d-flex justify-content-between align-items-center">
                                 <code>{anfrage.AnfrageID_Sprechend}</code>
                                 <Badge bg={getAnfrageStatusBadgeVariant(anfrage.Status)} pill>
