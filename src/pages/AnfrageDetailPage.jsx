@@ -97,14 +97,16 @@ function AnfrageDetailPage() {
     
     return (
         <Container>
-            <div className="d-flex justify-content-between align-items-center mb-4">
+            <div className="d-flex justify-content-between align-items-center mb-1">
                 <Link to="/anfragen" className="btn btn-secondary mb-4">
                     <i className="bi bi-arrow-left me-2"></i>Zurück zur Übersicht Anfragen
-                </Link>
+                </Link>                              
+            </div>  
+            <div className="mb-2">
                 {anfrage  && (
-                    <Button variant="outline-danger" onClick={handleReset}>
-                        <i className="bi bi-arrow-counterclockwise me-2"></i>Anfrage auf Status validiert zurücksetzen
-                    </Button>
+                <Button variant="outline-danger" onClick={handleReset}>
+                    <i className="bi bi-arrow-counterclockwise me-2"></i>Anfrage auf Status validiert zurücksetzen
+                </Button>
                 )}
             </div>            
             <Card className="shadow-sm">
