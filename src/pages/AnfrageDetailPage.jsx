@@ -136,11 +136,12 @@ function AnfrageDetailPage() {
                     <hr />
                     <h4 className="mt-4">Gewünschte Wegabschnitte</h4>
                     <Table striped hover size="sm" className="mt-3">
-                        <thead><tr><th>#</th><th>Von</th><th>Bis</th><th>Abfahrt</th><th>Ankunft</th></tr></thead>
+                        <thead><tr><th>#</th><th>ID</th><th>Von</th><th>Bis</th><th>Abfahrt</th><th>Ankunft</th></tr></thead>
                         <tbody>
                             {anfrage.ListeGewuenschterSlotAbschnitte.map((abschnitt, index) => (
                                 <tr key={index}>
                                     <td>{index + 1}</td>
+                                    <td>{anfrage.Verkehrsart}-{abschnitt.von}-{abschnitt.bis}-{`${String(abschnitt.Abfahrtszeit.stunde).padStart(2, '0')}${String(abschnitt.Abfahrtszeit.minute).padStart(2, '0')}`}</td>
                                     <td>{abschnitt.von}</td>
                                     <td>{abschnitt.bis}</td>
                                     <td>{`${String(abschnitt.Abfahrtszeit.stunde).padStart(2, '0')}:${String(abschnitt.Abfahrtszeit.minute).padStart(2, '0')}`}</td>
@@ -151,7 +152,7 @@ function AnfrageDetailPage() {
                     </Table>
                     
                     <hr />
-                    <h4 className="mt-4">Zugewiesene Slots ({anfrage.ZugewieseneSlots.length})</h4>
+                    <h4 className="mt-4">Zugeordnete Slots ({anfrage.ZugewieseneSlots.length})</h4>
                     <Table striped hover size="sm" className="mt-3">
                         <thead className="table-dark">
                             <tr>
