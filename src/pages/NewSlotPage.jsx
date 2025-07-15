@@ -1,8 +1,8 @@
 // src/pages/NewSlotPage.jsx
 import React, { useState } from 'react';
-import axios from 'axios';
 import { Form, Button, Container, Row, Col, Card, Alert, Spinner } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
+import apiClient from '../api/apiClient';
 //import { useNavigate } from 'react-router-dom';
 
 function NewSlotPage() {
@@ -51,7 +51,7 @@ function NewSlotPage() {
         };
 
         try {
-            const response = await axios.post('http://localhost:5001/api/slots/massen-erstellung', payload);
+            const response = await apiClient.post('/slots/massen-erstellung', payload);
             setSuccess(`Erfolg! ${response.data.erstellteSlots.length} Slots wurden erstellt. Fehler: ${response.data.fehler.length}.`);
             // Optional: Nach Erfolg weiterleiten
             // setTimeout(() => navigate('/slots'), 2000);
