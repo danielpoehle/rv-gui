@@ -134,7 +134,7 @@ function AnfrageDetailPage() {
                     </Row>
                     
                     <hr />
-                    <h4 className="mt-4">Gewünschte Wegabschnitte</h4>
+                    <h4 className="mt-4">Gewünschte Abschnitte</h4>
                     <Table striped hover size="sm" className="mt-3">
                         <thead><tr><th>#</th><th>ID</th><th>Von</th><th>Bis</th><th>Abfahrt</th><th>Ankunft</th></tr></thead>
                         <tbody>
