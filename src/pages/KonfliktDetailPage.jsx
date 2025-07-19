@@ -23,9 +23,12 @@ const verkehrsartColorMap = {
 // Helfer für Status-Farben
 const getAnfrageStatusBadgeVariant = (status) => {
     if (!status) return 'secondary';
-    if (status.startsWith('bestaetigt')) return 'success';
+    if (status.startsWith('teilweise_final_bestaetigt')) return 'success';
+    if (status.startsWith('vollstaendig_final_bestaetigt')) return 'success';
     if (status.startsWith('abgelehnt')) return 'danger';
-    if (status.startsWith('wartet')) return 'warning';
+    if (status.startsWith('final_abgelehnt')) return 'danger';
+    if (status.startsWith('fehlende_Plausi')) return 'danger';
+    if (status.startsWith('ungueltig')) return 'warning';
     return 'info';
 };
 
@@ -69,6 +72,37 @@ function KonfliktDetailPage() {
         if (anzahl === 0) return <Badge bg="success">Frei</Badge>;
         if (anzahl === 1) return <Badge bg="primary">Einfach belegt</Badge>;
         return <Badge bg="danger">Mehrfach belegt</Badge>;
+    };
+
+    // NEUE HELFERFUNKTION
+    const getErgebnisFuerAnfrage = (anfrage, konflikt) => {
+        if (!anfrage || !konflikt) return { text: '-', variant: 'secondary' };
+        
+        const anfrageIdStr = anfrage._id.toString();
+
+        // Prüfe die Ergebnislisten in einer logischen Reihenfolge
+        // Wichtig: Die Listen enthalten populierte Objekte, wir müssen auf ._id zugreifen
+        if (konflikt.zugewieseneAnfragen?.some(a => a._id.toString() === anfrageIdStr)) {
+            return { text: 'Anfrage gewinnt', variant: 'success' };
+        }
+        if (konflikt.ListeAnfragenMitVerzicht?.some(a => a._id.toString() === anfrageIdStr)) {
+            return { text: 'hat verzichtet', variant: 'dark' };
+        }
+        if (konflikt.ListeAnfragenVerschubKoordination?.some(item => item.anfrage._id.toString() === anfrageIdStr)) {
+            return { text: 'wurde verschoben', variant: 'info' };
+        }
+        if (konflikt.abgelehnteAnfragenEntgeltvergleich?.some(a => a._id.toString() === anfrageIdStr)) {
+            return { text: 'unterlegen im Entgeltvergleich', variant: 'danger' };
+        }
+        if (konflikt.abgelehnteAnfragenHoechstpreis?.some(a => a._id.toString() === anfrageIdStr)) {
+            return { text: 'unterlegen im Höchstpreisverfahren', variant: 'danger' };
+        }
+        if (konflikt.abgelehnteAnfragenMarktanteil?.some(a => a._id.toString() === anfrageIdStr)) {
+            return { text: 'abgelehnt wegen Marktanteil', variant: 'danger' };
+        }
+
+        // Fallback, wenn in keiner Ergebnisliste (z.B. Konflikt noch 'offen')
+        return { text: 'Entscheidung ausstehend', variant: 'secondary' };
     };
 
     if (loading) { return <div className="text-center mt-5"><Spinner animation="border" /></div>; }
@@ -117,7 +151,7 @@ function KonfliktDetailPage() {
                             value={<code>{ausloeserIdSprechend || 'N/A'}</code>}
                         />
                         <DetailRow 
-                            label="Aktive Anfragen vs. maximale Kapazität" 
+                            label="Initiale Anfragen vs. maximale Kapazität" 
                             value={`${konflikt.beteiligteAnfragen.length} / ${maxKap ?? 'N/A'}`} 
                         />
                      </ListGroup>
@@ -150,24 +184,35 @@ function KonfliktDetailPage() {
             {/* --- BETEILIGTE ANFRAGEN (unverändert) --- */}
             <Card className="mb-4 shadow-sm">
                 <Card.Header as="h4">Beteiligte Anfragen ({konflikt.beteiligteAnfragen.length})</Card.Header>
-                <ListGroup variant="flush">
-                    {konflikt.beteiligteAnfragen.map(anfrage => (
-                        <ListGroup.Item key={anfrage._id} className="d-flex justify-content-between align-items-center">
-                            <Badge bg={verkehrsartColorMap[anfrage.Verkehrsart] || 'secondary'}>{anfrage.Verkehrsart}</Badge>
-                            <code>{anfrage.AnfrageID_Sprechend}</code> {anfrage.EVU}, Entgelt {(anfrage.Entgelt || 0).toFixed(2)} €
-                            <Badge bg={getAnfrageStatusBadgeVariant(anfrage.Status)} pill>
-                                {anfrage.Status}
-                            </Badge>
-                        </ListGroup.Item>
-                    ))}
-                </ListGroup>
+                <Table striped hover size="sm" className="mb-0">
+                    <thead><tr><th>Verkehrsart</th><th>Anmeldung</th><th>EVU</th><th>Entgelt</th><th>Status Anfrage</th><th>Ergebnis Konflikt</th></tr></thead>
+                    <tbody>
+                        {[...konflikt.beteiligteAnfragen].sort((a, b) => {
+                                return (a.AnfrageID_Sprechend || '').localeCompare(b.AnfrageID_Sprechend || '');
+                        })
+                        .map(anfrage => {
+                            // Rufe die neue Hilfsfunktion für jede Anfrage auf
+                            const ergebnis = getErgebnisFuerAnfrage(anfrage, konflikt);
+                            
+                            return(
+                            <tr key={anfrage._id}>
+                                <td><Badge bg={verkehrsartColorMap[anfrage.Verkehrsart] || 'secondary'}>{anfrage.Verkehrsart}</Badge></td>
+                                <td><code>{anfrage.AnfrageID_Sprechend}</code></td>
+                                <td>{anfrage.EVU}</td>
+                                <td>{(anfrage.Entgelt || 0).toFixed(2)} €</td>
+                                <td><Badge bg={getAnfrageStatusBadgeVariant(anfrage.Status)} pill>{anfrage.Status}</Badge></td>
+                                <td><Badge bg={ergebnis.variant} text={ergebnis.text_color || null}>{ergebnis.text}</Badge></td>
+                            </tr>
+                        )})}
+                    </tbody>
+                </Table>                
             </Card>
             
             {/* --- BETEILIGTE SLOTS (ANGEPASST) --- */}
             <Card className="mb-4 shadow-sm">
                  <Card.Header as="h4">{slotListenHeader}</Card.Header>
                  <Table striped hover size="sm" className="mb-0">
-                    <thead><tr><th>Slot ID</th><th>Linie</th><th>Abschnitt</th><th>Belegung</th></tr></thead>
+                    <thead><tr><th>Slot ID</th><th>Linie</th><th>Abschnitt</th><th>initiale Belegung</th></tr></thead>
                     <tbody>
                         {slotsAnzeigen.length > 0 ? slotsAnzeigen.map(slot => (
                             <tr key={slot._id}>
