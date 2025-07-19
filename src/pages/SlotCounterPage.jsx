@@ -1,7 +1,7 @@
 // src/pages/SlotCounterPage.jsx
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api/apiClient';
-import { Table, Spinner, Alert, Badge } from 'react-bootstrap';
+import { Table, Spinner, Alert, Badge, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 
 // Das Farb-Mapping für die Verkehrsart-Badges
@@ -64,26 +64,48 @@ function SlotCounterPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {gruppenDaten.slotTypen.map((item, index) => (
-                                    <tr key={index}>
-                                        <td>
-                                            <Badge bg={verkehrsartColorMap[item.slotMuster.verkehrsart] || 'secondary'} className="ms-2">
-                                                {item.slotMuster.verkehrsart}
-                                            </Badge>
-                                            <br />
-                                            <br />
-                                            <strong>{item.slotMuster.von} <i className="bi bi-arrow-right-short"></i> {item.slotMuster.bis}</strong>
-                                            <br />
-                                            <small className="text-muted">
-                                                {formatTime(item.slotMuster.abfahrt)} - {formatTime(item.slotMuster.ankunft)}
-                                            </small>
-                                        </td>
-                                        <td>{item.anzahlMoFr}</td>
-                                        <td className="text-break">{item.kwsMoFr.sort((a,b) => a-b).join(', ')}</td>
-                                        <td>{item.anzahlSaSo}</td>
-                                        <td className="text-break">{item.kwsSaSo.sort((a,b) => a-b).join(', ')}</td>
-                                    </tr>
-                                ))}
+                                {gruppenDaten.slotTypen.map((item, index) => {
+                                    // Erzeuge die Query-Parameter für den Link
+                                    const queryParams = new URLSearchParams({
+                                        von: item.slotMuster.von,
+                                        bis: item.slotMuster.bis,
+                                        Abschnitt: item.slotMuster.abschnitt,
+                                        abfahrtStunde: item.slotMuster.abfahrt.stunde,
+                                        abfahrtMinute: item.slotMuster.abfahrt.minute,
+                                        ankunftStunde: item.slotMuster.ankunft.stunde,
+                                        ankunftMinute: item.slotMuster.ankunft.minute,
+                                        Verkehrsart: item.slotMuster.verkehrsart,
+                                    }).toString();
+                                    return(
+                                        <tr key={index}>
+                                            <td>
+                                                <strong>{item.slotMuster.linie}</strong>
+                                                <br />
+                                                <Badge bg={verkehrsartColorMap[item.slotMuster.verkehrsart] || 'secondary'} className="ms-2">
+                                                    {item.slotMuster.verkehrsart}
+                                                </Badge>
+                                                <br />
+                                                <br />
+                                                <strong>{item.slotMuster.von} <i className="bi bi-arrow-right-short"></i> {item.slotMuster.bis}</strong>
+                                                <br />
+                                                <small className="text-muted">
+                                                    {formatTime(item.slotMuster.abfahrt)} - {formatTime(item.slotMuster.ankunft)}
+                                                </small>
+                                                <br />
+                                                <br />
+                                                <Link to={`/slots/loeschen?${queryParams}`}>
+                                                    <Button variant="outline-danger" size="sm" title="Slot-Serie löschen">
+                                                        <i className="bi bi-trash"></i>
+                                                    </Button>
+                                                </Link>
+                                            </td>
+                                            <td>{item.anzahlMoFr}</td>
+                                            <td className="text-break">{item.kwsMoFr.sort((a,b) => a-b).join(', ')}</td>
+                                            <td>{item.anzahlSaSo}</td>
+                                            <td className="text-break">{item.kwsSaSo.sort((a,b) => a-b).join(', ')}</td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </Table>
                     </div>
