@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import apiClient from '../api/apiClient'; // Unser zentraler API-Client
 import { Table, Spinner, Alert, Pagination, Button, Badge } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
@@ -14,37 +14,60 @@ function KapazitaetstopfOverviewPage() {
     const [toepfe, setToepfe] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [feedback, setFeedback] = useState(''); // Für Erfolgs-/Fehlermeldungen nach Aktionen
     
     // State und Logik für die Paginierung
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
     const [limitPerPage] = useState(15);
+    
+    const fetchToepfe = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await apiClient.get(`/kapazitaetstoepfe?page=${currentPage}&limit=${limitPerPage}&sortBy=Kalenderwoche:asc`);
+            
+            setToepfe(response.data.data);
+            setTotalPages(response.data.totalPages);
+            setError(null);
+        } catch (err) {
+            console.error("Fehler beim Laden der Kapazitätstöpfe:", err);
+            setError("Fehler beim Laden der Kapazitätstöpfe.");
+            setToepfe([]);
+            setTotalPages(0);
+        } finally {
+            setLoading(false);
+        }
+    }, [currentPage, limitPerPage]); // Abhängigkeiten der Funktion
 
-    useEffect(() => {
-        const fetchToepfe = async () => {
-            setLoading(true);
-            try {
-                const response = await apiClient.get(`/kapazitaetstoepfe?page=${currentPage}&limit=${limitPerPage}&sortBy=Kalenderwoche:asc`);
-                
-                setToepfe(response.data.data);
-                setTotalPages(response.data.totalPages);
-                setError(null);
-            } catch (err) {
-                console.error("Fehler beim Laden der Kapazitätstöpfe:", err);
-                setError("Fehler beim Laden der Kapazitätstöpfe.");
-                setToepfe([]);
-                setTotalPages(0);
-            } finally {
-                setLoading(false);
-            }
-        };
+    useEffect(() => {       
 
         fetchToepfe();
-    }, [currentPage, limitPerPage]);
+    }, [fetchToepfe]);
 
     const handlePageChange = (pageNumber) => {
         if (pageNumber >= 1 && pageNumber <= totalPages && pageNumber !== currentPage) {
             setCurrentPage(pageNumber);
+        }
+    };
+
+    // HANDLER-FUNKTION für das Löschen
+    const handleDelete = async (topfId, topfSprechendeId) => {
+        // Sicherheitsabfrage für den Benutzer
+        if (!window.confirm(`Möchtest du den Kapazitätstopf "${topfSprechendeId}" wirklich endgültig löschen?`)) {
+            return;
+        }
+
+        try {
+            setFeedback(`Lösche Topf ${topfSprechendeId}...`);
+            const response = await apiClient.delete(`/kapazitaetstoepfe/${topfId}`);
+            setFeedback(response.data.message); // Erfolgsmeldung vom Backend anzeigen
+            
+            // Lade die Daten auf der aktuellen Seite neu, um die Liste zu aktualisieren
+            await fetchToepfe();
+        } catch (err) {
+            const errorMsg = err.response?.data?.message || 'Löschen fehlgeschlagen.';
+            setError(errorMsg); // Fehler prominent anzeigen
+            console.error(err);
         }
     };
     
@@ -92,8 +115,10 @@ function KapazitaetstopfOverviewPage() {
                     </Button>
                 </Link>              
             </div>
+            {feedback && <Alert variant="info" onClose={() => setFeedback('')} dismissible>{feedback}</Alert>}
+            {error && <Alert variant="danger">{error}</Alert>}
             
-            {toepfe.length === 0 ? (
+            {toepfe.length === 0 && !loading ? (
                 <Alert variant="info">Keine Kapazitätstöpfe gefunden.</Alert>
             ) : (
                 <>
@@ -101,22 +126,21 @@ function KapazitaetstopfOverviewPage() {
                         <thead className="table-dark">
                             <tr>
                                 <th>Topf-ID</th>
-                                <th>Abschnitt</th>
                                 <th>Verkehrsart</th>
                                 <th>Rel. KW</th>
                                 <th>Verkehrstag / Zeitfenster</th>
                                 <th>Anz. Slots</th>
                                 <th>(Anfragen / max. Kapa.)</th>
-                                <th>Details</th>
+                                <th>Aktionen</th>
                             </tr>
                         </thead>
                         <tbody>
                             {toepfe.map(topf => {
                                 const isOverbooked = topf.ListeDerAnfragen.length > topf.maxKapazitaet;
+                                const canBeDeleted = topf.ListeDerSlots.length === 0 && topf.ListeDerAnfragen.length === 0;
                                 return (
                                     <tr key={topf._id}>
-                                        <td><code>{topf.TopfID}</code></td>
-                                        <td>{topf.Abschnitt}</td>
+                                        <td><code>{topf.TopfID}</code></td>                                        
                                         <td>
                                             <Badge bg={verkehrsartColorMap[topf.Verkehrsart] || 'secondary'}>
                                                 {topf.Verkehrsart}
@@ -129,12 +153,23 @@ function KapazitaetstopfOverviewPage() {
                                             {topf.ListeDerAnfragen.length} / {topf.maxKapazitaet}
                                             {isOverbooked && <i className="bi bi-exclamation-triangle-fill ms-2" title="Kapazität überschritten"></i>}
                                         </td>
-                                        <td>
+                                        <td className="align-middle">
                                             <Link to={`/kapazitaetstoepfe/${topf._id}`}>
                                                 <Button variant="outline-primary" size="sm" title="Details anzeigen">
                                                     <i className="bi bi-search"></i>
                                                 </Button>
                                             </Link>
+                                            {canBeDeleted && (
+                                                <Button 
+                                                    variant="outline-danger" 
+                                                    size="sm" 
+                                                    title="Kapazitätstopf löschen"
+                                                    onClick={() => handleDelete(topf._id, topf.TopfID)}
+                                                    className="ms-1"
+                                                >
+                                                    <i className="bi bi-trash"></i>
+                                                </Button>
+                                            )}
                                         </td>
                                     </tr>
                                 );

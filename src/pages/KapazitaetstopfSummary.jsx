@@ -47,7 +47,7 @@ function KapazitaetstopfSummaryPage() {
         <div>
             <div className="d-flex justify-content-between align-items-center mb-4">
                  <h1 className="mb-4"><i className="bi bi-bar-chart-line-fill me-3"></i>Zusammenfassung der Kapazitätstöpfe</h1>
-                 <Link to="/kapazitaetstoepfe" className="btn btn-secondary">
+                 <Link to="/kapazitaetstoepfe" className="btn btn-secondary ms-4 mb-4">
                     <i className="bi bi-arrow-left me-2"></i>Zur Listenansicht
                 </Link>
             </div>            

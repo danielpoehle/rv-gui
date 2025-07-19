@@ -78,13 +78,13 @@ function SlotCounterPage() {
                                     }).toString();
                                     return(
                                         <tr key={index}>
-                                            <td>
-                                                <strong>{item.slotMuster.linie}</strong>
-                                                <br />
+                                            <td>                                                
                                                 <Badge bg={verkehrsartColorMap[item.slotMuster.verkehrsart] || 'secondary'} className="ms-2">
                                                     {item.slotMuster.verkehrsart}
                                                 </Badge>
                                                 <br />
+                                                <br />
+                                                <strong>{item.slotMuster.linie}</strong>
                                                 <br />
                                                 <strong>{item.slotMuster.von} <i className="bi bi-arrow-right-short"></i> {item.slotMuster.bis}</strong>
                                                 <br />
