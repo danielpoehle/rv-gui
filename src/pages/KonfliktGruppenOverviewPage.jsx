@@ -45,13 +45,17 @@ function KonfliktGruppenOverviewPage() {
     }, []);
 
     // Funktion zum Zurücksetzen einer Gruppe
-    const handleResetGruppe = async (gruppenId) => {
-        if (!window.confirm(`Möchtest du die Konfliktgruppe ${gruppenId} wirklich zurücksetzen? Alle zugehörigen Konfliktdokumente werden gelöscht und die Anfragen zurückgesetzt.`)) {
+    const handleResetGruppe = async (gruppenId, gruppenTyp) => {
+        if (!window.confirm(`Möchtest du die ${gruppenTyp}-Konfliktgruppe ${gruppenId} wirklich zurücksetzen? Alle zugehörigen Konfliktdokumente werden gelöscht und die Anfragen zurückgesetzt.`)) {
             return;
         }
         setFeedback(`Setze Gruppe ${gruppenId} zurück...`);
         try {
-            const response = await apiClient.post(`/konflikte/gruppen/${gruppenId}/reset`);
+            const endpointUrl = gruppenTyp === 'KAPAZITAETSTOPF'
+                ? `/konflikte/gruppen/${gruppenId}/reset`
+                : `/konflikte/slot-gruppen/${gruppenId}/reset`;
+
+            const response = await apiClient.post(endpointUrl);
             setFeedback(response.data.message);
             fetchData(); // Lade die Liste neu, um die gelöschte Gruppe zu entfernen
         } catch (err) {
@@ -137,7 +141,7 @@ function KonfliktGruppenOverviewPage() {
                                         variant="outline-danger" 
                                         size="sm" 
                                         title="Konfliktgruppe zurücksetzen"
-                                        onClick={() => handleResetGruppe(gruppe._id)}
+                                        onClick={() => handleResetGruppe(gruppe._id, konfliktTyp)}
                                         className="ms-2"
                                     >
                                         <i className="bi bi-arrow-counterclockwise"></i>
