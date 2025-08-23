@@ -94,8 +94,16 @@ function SlotDetailPage() {
                                 <DetailRow label="Abschnitt" value={slot.Abschnitt} />
                                 <DetailRow label="Von" value={slot.von} />
                                 <DetailRow label="Bis" value={slot.bis} />
-                                <DetailRow label="Abfahrt" value={`${String(slot.Abfahrt.stunde).padStart(2, '0')}:${String(slot.Abfahrt.minute).padStart(2, '0')}`} />
-                                <DetailRow label="Ankunft" value={`${String(slot.Ankunft.stunde).padStart(2, '0')}:${String(slot.Ankunft.minute).padStart(2, '0')}`} />
+                                {
+                                    slot.slotTyp === 'TAG' && (
+                                                    <DetailRow label="Abfahrt - Ankunft" value={`${String(slot.Abfahrt.stunde).padStart(2, '0')}:${String(slot.Abfahrt.minute).padStart(2, '0')} - ${String(slot.Ankunft.stunde).padStart(2, '0')}:${String(slot.Ankunft.minute).padStart(2, '0')}`} />
+                                                  )
+                                }                               
+                                {
+                                    slot.slotTyp === 'NACHT' && (
+                                                    <DetailRow label="Zeitfenster" value={`${slot.Zeitfenster}`} />
+                                                  )
+                                }   
                             </ListGroup>
                         </Col>
                         <Col md={6}>

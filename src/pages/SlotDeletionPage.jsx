@@ -89,8 +89,18 @@ function SlotDeletionPage() {
             <Card.Header as="h3">Slot-Serie löschen</Card.Header>
             <Card.Body>
                 <Card.Title>Slot-Muster</Card.Title>
-                <p>{queryParams.get('von')} <i className="bi bi-arrow-right-short"></i> {queryParams.get('bis')} (Abschnitt <strong>{queryParams.get('Abschnitt')}</strong>, Verkehrsart <strong>{queryParams.get('Verkehrsart')}</strong>)</p>
-                <p>Abfahrt: {String(queryParams.get('abfahrtStunde')).padStart(2, '0')}:{String(queryParams.get('abfahrtMinute')).padStart(2, '0')} Ankunft: {String(queryParams.get('ankunftStunde')).padStart(2, '0')}:{String(queryParams.get('ankunftMinute')).padStart(2, '0')}</p>
+                <p>{queryParams.get('von')} <i className="bi bi-arrow-right-short"></i> {queryParams.get('bis')} (Abschnitt <strong>{queryParams.get('abschnitt')}</strong>, Verkehrsart <strong>{queryParams.get('verkehrsart')}</strong>)</p>
+                {
+                    queryParams.get('slotTyp') === 'TAG' && (
+                                    <p>Abfahrt: {String(queryParams.get('abfahrtStunde')).padStart(2, '0')}:{String(queryParams.get('abfahrtMinute')).padStart(2, '0')} Ankunft: {String(queryParams.get('ankunftStunde')).padStart(2, '0')}:{String(queryParams.get('ankunftMinute')).padStart(2, '0')}</p>
+                                  )
+                } 
+                {
+                    queryParams.get('slotTyp') === 'NACHT' && (
+                                    <p>Zeitfenster: {String(queryParams.get('zeitfenster'))}</p>
+                                  )
+                } 
+                
                 <hr/>
                 <p>Wählen Sie die zu löschenden Instanzen aus. Es können nur Slots gelöscht werden, denen keine Anfragen zugeordnet sind.</p>
                 <Table striped hover size="sm">
@@ -106,6 +116,7 @@ function SlotDeletionPage() {
                     <tbody>
                         {slots.map(slot => {
                             const isBelegt = slot.zugewieseneAnfragen.length > 0;
+                            //const istTagSlot = slot.slotTyp === 'TAG';
                             return (
                                 <tr key={slot._id} className={isBelegt ? 'table-secondary' : ''}>
                                     <td>

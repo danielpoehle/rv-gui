@@ -13,6 +13,8 @@ function SlotCounterPage() {
     const [summaryData, setSummaryData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [actionInProgress, setActionInProgress] = useState(false);
+    const [actionFeedback, setActionFeedback] = useState('');
 
     useEffect(() => {
         const fetchSummary = async () => {
@@ -30,6 +32,24 @@ function SlotCounterPage() {
         fetchSummary();
     }, []);
 
+    const handleMigrationStarten = async () => {
+        if (!window.confirm("Möchten Sie die Migration für alte Slot-Daten starten? Dies sollte normalerweise nur einmal ausgeführt werden.")) {
+            return;
+        }
+        setActionInProgress(true);
+        setActionFeedback('Starte Slot-Daten-Migration...');
+        try {
+            const response = await apiClient.post('/slots/migrate-to-discriminator');
+            const summary = response.data.summary;
+            setActionFeedback(`Migration abgeschlossen. ${summary.aktualisierteDokumente} von ${summary.gefundeneDokumente} Slots wurden aktualisiert.`);
+        } catch (err) {
+            setActionFeedback('Fehler bei der Migration.');
+            console.error(err);
+        } finally {
+            setActionInProgress(false);
+        }
+    };
+
     const formatTime = (zeitObjekt) => {
         if (!zeitObjekt) return '-';
         return `${String(zeitObjekt.stunde).padStart(2, '0')}:${String(zeitObjekt.minute).padStart(2, '0')}`;
@@ -41,11 +61,23 @@ function SlotCounterPage() {
     return (
         <div>
             <div className="d-flex justify-content-between align-items-center mb-4">
-                 <h1 className="mb-0"><i className="bi bi-bar-chart-steps me-3"></i>Slot-Inventar je Abschnitt</h1>
-                 <Link to="/slots" className="btn btn-secondary">
-                    <i className="bi bi-arrow-left me-2"></i>Zurück zur Listenansicht
-                </Link>
+                 <h1 className="mb-0"><i className="bi bi-bar-chart-steps me-3"></i>Slot-Inventar je Abschnitt</h1>                 
+                 <div>
+                    <Link className="me-2">
+                        <Button 
+                        onClick={handleMigrationStarten}
+                        variant="outline-success" 
+                        title="Tages-Slots migrieren" 
+                        disabled={actionInProgress}>
+                            <i className="bi bi-patch-plus me-2"></i> Tages-Slots migrieren
+                        </Button>
+                    </Link>
+                    <Link to="/slots" className="btn btn-secondary">
+                        <i className="bi bi-arrow-left me-2"></i>Zurück zur Listenansicht
+                    </Link>
+                 </div>                
             </div>
+            <div>{actionFeedback && <Alert variant="info">{actionFeedback}</Alert>}</div>
             
             {summaryData.length === 0 ? (
                 <Alert variant="info">Keine Slot-Daten für eine Zusammenfassung vorhanden.</Alert>
@@ -65,32 +97,60 @@ function SlotCounterPage() {
                             </thead>
                             <tbody>
                                 {gruppenDaten.slotTypen.map((item, index) => {
+                                    const istTagSlot = item.slotMuster.slotTyp === 'TAG';
                                     // Erzeuge die Query-Parameter für den Link
-                                    const queryParams = new URLSearchParams({
+                                    // Baue die Basis-Parameter
+                                    const baseParams = {
                                         von: item.slotMuster.von,
                                         bis: item.slotMuster.bis,
-                                        Abschnitt: item.slotMuster.abschnitt,
-                                        abfahrtStunde: item.slotMuster.abfahrt.stunde,
-                                        abfahrtMinute: item.slotMuster.abfahrt.minute,
-                                        ankunftStunde: item.slotMuster.ankunft.stunde,
-                                        ankunftMinute: item.slotMuster.ankunft.minute,
-                                        Verkehrsart: item.slotMuster.verkehrsart,
-                                    }).toString();
+                                        abschnitt: item.slotMuster.abschnitt,
+                                        verkehrsart: item.slotMuster.verkehrsart,
+                                        slotTyp: item.slotMuster.slotTyp,
+                                    };
+                                    const queryParams = istTagSlot
+                                        ? new URLSearchParams({
+                                            ...baseParams,
+                                            abfahrtStunde: item.slotMuster.abfahrt.stunde,
+                                            abfahrtMinute: item.slotMuster.abfahrt.minute,
+                                            ankunftStunde: item.slotMuster.ankunft.stunde,
+                                            ankunftMinute: item.slotMuster.ankunft.minute,
+                                        }).toString()
+                                        : new URLSearchParams({
+                                            ...baseParams,
+                                            zeitfenster: item.slotMuster.zeitfenster
+                                            // Mindest-/Maximalfahrzeit sind hier nicht Teil des Musters
+                                        }).toString();
+                                    
                                     return(
                                         <tr key={index}>
                                             <td>                                                
-                                                <Badge bg={verkehrsartColorMap[item.slotMuster.verkehrsart] || 'secondary'} className="ms-2">
+                                                <Badge bg={verkehrsartColorMap[item.slotMuster.verkehrsart] || 'secondary'} className="ms-1">
                                                     {item.slotMuster.verkehrsart}
                                                 </Badge>
+                                                <br />
+                                                <br />
+                                                <i className={( !istTagSlot && 'bi bi-moon-stars-fill me-2') || 'bi bi-sun-fill me-2'}></i>
+                                                {item.slotMuster.slotTyp} 
                                                 <br />
                                                 <br />
                                                 <strong>{item.slotMuster.linie}</strong>
                                                 <br />
                                                 <strong>{item.slotMuster.von} <i className="bi bi-arrow-right-short"></i> {item.slotMuster.bis}</strong>
                                                 <br />
-                                                <small className="text-muted">
-                                                    {formatTime(item.slotMuster.abfahrt)} - {formatTime(item.slotMuster.ankunft)}
-                                                </small>
+                                                {
+                                                    istTagSlot && (
+                                                        <small className="text-muted">
+                                                            {formatTime(item.slotMuster.abfahrt)} - {formatTime(item.slotMuster.ankunft)}
+                                                        </small>
+                                                    )
+                                                }  
+                                                {
+                                                    !istTagSlot && (
+                                                        <small className="text-muted">
+                                                            Zeitfenster {item.slotMuster.zeitfenster}
+                                                        </small>
+                                                    )
+                                                }                                               
                                                 <br />
                                                 <br />
                                                 <Link to={`/slots/loeschen?${queryParams}`}>

@@ -45,7 +45,9 @@ function KonfliktCoordinationPage() {
             fetchData(); // Lade die Daten neu, um die Änderungen zu sehen
         } catch (err) {
             console.error("Fehler bei Zuweisung für alle validierten Anfragen:", err);
-            setActionFeedback('Ein Fehler ist bei der Massen-Zuweisung aufgetreten.');
+            const serverErrorMessage = err.response?.data?.message;
+            const feedbackMessage = `Ein Fehler ist bei der Massen-Zuweisung aufgetreten: ${serverErrorMessage || err.message}`;
+            setActionFeedback(feedbackMessage);
         } finally {
             setActionInProgress(false);
         }
@@ -60,7 +62,9 @@ function KonfliktCoordinationPage() {
             fetchData(); // Lade die Daten neu
         } catch (err) {
             console.error("Fehler bei Topf-Konflikterkennung und Gruppensynchronisation:", err);
-            setActionFeedback('Ein Fehler ist bei der Topf-Konflikterkennung aufgetreten.');
+            const serverErrorMessage = err.response?.data?.message;
+            const feedbackMessage = `Ein Fehler ist bei der Topf-Konflikterkennung aufgetreten: ${serverErrorMessage || err.message}`;
+            setActionFeedback(feedbackMessage);
         } finally {
             setActionInProgress(false);
         }
@@ -75,7 +79,9 @@ function KonfliktCoordinationPage() {
             fetchData(); // Lade die Daten neu
         } catch (err) {
             console.error("Fehler bei Slot-Konflikterkennung und Gruppensynchronisation:", err);
-            setActionFeedback('Ein Fehler ist bei der Slot-Konflikterkennung aufgetreten.');
+            const serverErrorMessage = err.response?.data?.message;
+            const feedbackMessage = `Ein Fehler ist bei der Slot-Konflikterkennung aufgetreten: ${serverErrorMessage || err.message}`;
+            setActionFeedback(feedbackMessage);
         } finally {
             setActionInProgress(false);
         }

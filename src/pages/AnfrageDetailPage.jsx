@@ -136,7 +136,7 @@ function AnfrageDetailPage() {
                     <hr />
                     <h4 className="mt-4">Gewünschte Abschnitte</h4>
                     <Table striped hover size="sm" className="mt-3">
-                        <thead><tr><th>#</th><th>ID</th><th>Von</th><th>Bis</th><th>Abfahrt</th><th>Ankunft</th></tr></thead>
+                        <thead><tr><th>#</th><th>ID</th><th>Von</th><th>Bis</th><th>Abfahrt</th><th>Ankunft</th><th>Tageswechsel</th></tr></thead>
                         <tbody>
                             {anfrage.ListeGewuenschterSlotAbschnitte.map((abschnitt, index) => (
                                 <tr key={index}>
@@ -146,6 +146,7 @@ function AnfrageDetailPage() {
                                     <td>{abschnitt.bis}</td>
                                     <td>{`${String(abschnitt.Abfahrtszeit.stunde).padStart(2, '0')}:${String(abschnitt.Abfahrtszeit.minute).padStart(2, '0')}`}</td>
                                     <td>{`${String(abschnitt.Ankunftszeit.stunde).padStart(2, '0')}:${String(abschnitt.Ankunftszeit.minute).padStart(2, '0')}`}</td>
+                                    <td>{abschnitt.dayOffset > 0 ? `+ ${abschnitt.dayOffset / 24}` : `-`}</td>
                                 </tr>
                             ))}
                         </tbody>
